@@ -1,5 +1,4 @@
 const sql = require('mssql')
-const { ManagedIdentityCredential } = require('@azure/identity')
 
 const connectionString = process.env.AZURE_SQL_CONNECTION_STRING
 
@@ -11,19 +10,12 @@ async function getConnection() {
   }
   if (pool) return pool
 
-  const credential = new ManagedIdentityCredential()
-  const tokenResponse = await credential.getToken('https://database.windows.net/')
+  const connStr = connectionString.replace(
+    'Authentication="Active Directory Default"',
+    'Authentication=Active Directory Managed Identity'
+  )
 
-  pool = await sql.connect({
-    connectionString: connectionString,
-    authentication: {
-      type: 'azure-active-directory-access-token',
-      options: {
-        token: tokenResponse.token
-      }
-    }
-  })
-
+  pool = await sql.connect(connStr)
   pool.on('error', () => { pool = null })
   return pool
 }
