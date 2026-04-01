@@ -4,79 +4,63 @@ This file provides guidance to AI coding agents operating in this repository.
 
 ## Project Overview
 
-This is a **Vue 3 + Vite** frontend application with an **Azure Functions** (Node.js) API backend, deployed to **Azure Static Web Apps**. The frontend fetches from `/api/message` on mount.
+**Vue 3 + Vite** frontend with an **Azure Functions v4** (Node.js) API backend, deployed to **Azure Static Web Apps** via GitHub Actions. The frontend fetches `/api/message` on mount.
 
 ### Key Paths
 
 | Path | Purpose |
 |------|---------|
-| `src/` | Vue 3 frontend source (Vite) |
-| `api/src/` | Azure Functions API source |
-| `api/src/functions/` | Individual Azure Function handlers |
-| `dist/` | Built frontend output (Vite build) |
-| `staticwebapp.config.json` | Azure Static Web Apps routing config |
+| `src/` | Vue 3 frontend source |
+| `src/functions/` | **Unused legacy dir** — do NOT edit these files |
+| `api/src/` | Azure Functions entry + setup |
+| `api/src/functions/` | Active Azure Function handlers (`.cjs`) |
+| `dist/` | Vite production build output |
+| `staticwebapp.config.json` | Azure SWA routing config |
 
 ### Tech Stack
 
-- **Frontend**: Vue 3, Vite 6, @vitejs/plugin-vue
-- **API**: Azure Functions v4 (Node.js, @azure/functions)
-- **Deployment**: Azure Static Web Apps CI/CD via GitHub Actions
+- **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3
+- **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.cjs` files)
+- **CSS**: Tailwind CSS via `postcss` + `autoprefixer`
+- **Deployment**: GitHub Actions → Azure Static Web Apps
 - **No TypeScript** — plain JavaScript throughout
 - **No test framework** — tests not yet configured
+- **No ESLint/Prettier** — no automated linting
 
 ---
 
-## Build / Lint / Dev Commands
+## Build / Dev Commands
 
 ### Frontend (Vite)
 
 ```bash
-npm run dev        # Start Vite dev server with hot-reload (proxies /api to localhost:7071)
-npm run build      # Build for production → outputs to dist/
-npm run preview    # Preview the production build locally
+npm run dev        # Start Vite dev server (proxies /api → localhost:7071)
+npm run build      # Build for production → dist/
 ```
 
 ### API (Azure Functions)
 
-The API runs locally via the Azure Functions Core Tools. No npm scripts are defined for it. To run:
-
 ```bash
-func start --script-root api/src
+func start --script-root api/src   # Run API locally via Azure Functions Core Tools
 ```
 
-Or use VS Code's Azure Functions extension.
+Or use VS Code Azure Functions extension. The API has its own `api/package.json` with `@azure/functions` dependency.
 
 ### Tests
 
-**No test framework is configured.** The `test` script is a placeholder:
+**No test framework configured.** `npm test` is a no-op placeholder.
 
-```bash
-npm test           # Currently a no-op: "echo \"Error: no test specified\" && exit 1"
-```
-
-To add tests, install a framework (e.g., Vitest is recommended for Vite projects):
+To add tests (recommended: Vitest):
 
 ```bash
 npm install -D vitest @vue/test-utils
-```
-
-Run a single test file with:
-
-```bash
-npx vitest run src/components/MyComponent.test.js
-```
-
-Or in watch mode:
-
-```bash
-npx vitest src/components/MyComponent.test.js
+npx vitest run src/components/MyComponent.test.js   # Single test file
+npx vitest src/components/MyComponent.test.js        # Watch mode
 ```
 
 ### Linting
 
-**No ESLint or Prettier is configured.** The codebase has no automated linting.
-
-If adding ESLint:
+**Not configured.** To add ESLint:
 
 ```bash
 npm install -D eslint eslint-plugin-vue
@@ -84,36 +68,52 @@ npx eslint src/           # Lint all source files
 npx eslint src/ --fix     # Auto-fix fixable issues
 ```
 
+### CI/CD
+
+GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach-084b53200.yml`:
+- Triggers on push to `main` and PRs
+- Runs `npm install` → `npx vite build` → deploys with `Azure/static-web-apps-deploy@v1`
+- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+
 ---
 
 ## Code Style Guidelines
 
 ### General
 
-- Use **ES modules** (`import`/`export`) in `src/` (Vite/Vue files)
-- Use **CommonJS** (`require`/`module.exports`) in `api/src/` (Azure Functions — Node.js)
+- **ES modules** (`import`/`export`) in `src/` — frontend code
+- **CommonJS** (`require`/`module.exports`) in `api/src/` — API files use `.cjs` extension
 - No TypeScript — plain JavaScript only
-- No semicolons in new code (existing code has none in JS files)
+- No semicolons (existing code has none in JS files)
 - 2-space indentation
 - No trailing whitespace
 - Max line length: ~120 characters (soft limit)
 
 ### Vue 3 Components
 
-- Use **Options API** (`name`, `data`, `methods`, `mounted`, etc.) — matches existing style in `App.vue`
+- Use **Options API** (`name`, `data`, `methods`, `mounted`) — matches `App.vue`
 - Component names: PascalCase (e.g., `UserProfile.vue`)
 - One component per file
-- Prefer `<script setup>` if adding new large components, but match existing Options API style for consistency in small components
-- Always handle errors gracefully (e.g., `v-if="error"` in templates)
+- Handle errors in templates with `v-if="error"` and styled error blocks
 - Use `async/await` in lifecycle hooks with `try/catch`
+- Data properties initialized with default values (`""`, `null`)
+
+### Styling (Tailwind CSS)
+
+- Use Tailwind utility classes directly in templates
+- Tailwind config at `tailwind.config.js` scans `src/**/*.{vue,js,ts,jsx,tsx}`
+- Base styles / resets in `src/style.css` via `@layer base`
+- Color palette: `slate-*` (neutrals), `blue-*` (accents), `red-*` (errors)
+- Use `transition-colors duration-200` for hover effects on buttons
 
 ### Azure Functions
 
-- Each function gets its own file under `api/src/functions/`
+- Each function gets its own `.cjs` file under `api/src/functions/`
 - Use `app.http(name, { methods, authLevel, handler })` pattern
-- Always log requests: `context.log(...)`
-- Return `{ body: ... }` or `{ body: JSON.stringify({ ... }) }` for JSON
-- Use `request.query.get()` and `request.text()` / `request.json()` for input
+- Always log with `context.log(...)` for info, `context.error(...)` for errors
+- Return `{ body: JSON.stringify({ ... }) }` for JSON responses
+- Parse input via `request.query.get()`, `request.text()`, `request.json()`
+- Entry point `api/src/index.cjs` does global `app.setup({ enableHttpStream: true })`
 
 ### Naming Conventions
 
@@ -121,55 +121,47 @@ npx eslint src/ --fix     # Auto-fix fixable issues
 |------|-----------|---------|
 | Vue files | PascalCase | `UserProfile.vue` |
 | JS functions | camelCase | `fetchUserData` |
-| Azure function files | camelCase | `hello.js` |
+| API function files | camelCase + `.cjs` | `message.cjs` |
 | Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
 | CSS classes | kebab-case | `error-message` |
 
-### Imports / Exports
+### Imports
 
 **Frontend (`src/`):**
-
 ```js
 import { ref, computed } from 'vue'
 import MyComponent from './MyComponent.vue'
+import './style.css'
 ```
 
 **API (`api/src/`):**
-
 ```js
 const { app } = require('@azure/functions');
 ```
 
 ### Error Handling
 
-- Always wrap `fetch` calls in `try/catch`
-- Display user-facing errors in templates with `v-if="error"` and `style="color: red"`
-- Log errors to console: `console.error('...', err)`
-- Azure Functions: use `context.log` for info and `context.error` for errors
+- Wrap `fetch` calls in `try/catch`; check `response.ok` before parsing
+- Store errors in `this.error` data property; display with `v-if="error"` in template
+- Log to console: `console.error('Fetch error:', err)`
+- Azure Functions: use `context.log` / `context.error`
 
 ### Git Conventions
 
-- Commit message format: imperative mood, short first line
+- Commit messages: imperative mood, short first line
   - Good: `Fix Azure Static Web Apps api_location config`
   - Bad: `fixed stuff` or `Fixed the bug`
 - Never commit `node_modules/`, `dist/`, `.env`, or secrets
-- Run `npm run build` before pushing to verify the production build succeeds
-
----
-
-## Azure Static Web Apps Configuration
-
-- **`staticwebapp.config.json`** controls routing and fallback behavior
-- **`app_location`** (workflow): `/` — frontend root
-- **`api_location`** (workflow): `api` — Azure Functions source (must contain `host.json`)
-- **`output_location`** (workflow): `dist` — Vite build output
-
-The `navigationFallback` in `staticwebapp.config.json` routes all non-asset routes to `/index.html` for SPA support.
+- Run `npm run build` before pushing to verify the build succeeds
 
 ---
 
 ## Common Issues
 
 - **404 on API calls**: Ensure `api_location` is `api` (not `api/src`) in the workflow YAML. Azure needs `host.json` in the root of the API location.
-- **Duplicate `message.js`**: There is a redundant `src/functions/message.js` that is NOT used. The active API function is in `api/src/functions/message.js`. Clean up the unused one.
-- **Git identity not set**: If commits fail with "Author identity unknown", set: `git config --global user.name "YourName"` and `git config --global user.email "you@example.com"`
+- **Duplicate `message.js`**: `src/functions/message.js` is **NOT used**. The active API function is `api/src/functions/message.cjs`. The stale file in `src/` should be cleaned up.
+- **Git identity not set**: If commits fail with "Author identity unknown", set:
+  ```bash
+  git config --global user.name "YourName"
+  git config --global user.email "you@example.com"
+  ```
