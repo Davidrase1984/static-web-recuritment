@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents operating in this repository.
 
 ## Project Overview
 
-**Vue 3 + Vite** frontend with an **Azure Functions v4** (Node.js) API backend, deployed to **Azure Static Web Apps** via GitHub Actions. The frontend fetches `/api/message` on mount.
+**Vue 3 + Vite** frontend with an **Azure Functions v4** (Node.js) API backend, deployed to **Azure Static Web Apps** via GitHub Actions. The frontend fetches `/api/get-candidates` on mount to display a recruitment dashboard.
 
 ### Key Paths
 
@@ -75,6 +75,18 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 - Triggers on push to `main` and PRs
 - Runs `npm install` → `npx vite build` → deploys with `Azure/static-web-apps-deploy@v1`
 - Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+### API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/health` | GET | Health check (verifies env vars are set) |
+| `/api/get-candidates` | GET | List all candidates |
+| `/api/get-candidate?id=X` | GET | Get single candidate |
+| `/api/create-candidate` | POST | Create new candidate |
+| `/api/update-candidate` | POST | Update candidate |
+| `/api/delete-candidate?id=X` | POST | Delete candidate |
+| `/api/setup-db` | POST | Create Candidates table (one-time) |
+
 
 ---
 
@@ -120,6 +132,7 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 
 ### Azure SQL Database
 
+
 - Connection helper at `api/src/functions/db.js` exports `{ sql, getConnection, closeConnection }`
 - Uses SQL auth with hardcoded server/database/user; password from `process.env.AZURE_SQL_PASSWORD`
 - Set `AZURE_SQL_PASSWORD` in Azure Portal → Static Web App → Configuration → Environment variables
@@ -132,6 +145,40 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 - Always wrap DB calls in `try/catch` and return proper error status codes
 - Use `sql.NVarChar`, `sql.Int`, `sql.DateTime2` etc. for parameter types
 - One-time setup via `POST /api/setup-db` (creates tables if not exists)
+### Azure SQL Firewall
+
+Azure Static Web Apps uses a **pool of outbound IPs** that change frequently. Adding individual IPs to the firewall does NOT work. Instead, add **CIDR ranges** for the SWA region.
+
+**How to find the correct ranges:**
+1. Download Microsoft's official Azure IP ranges: `https://download.microsoft.com/download/7/1/d/71d86715-5596-4529-9b13-da13a5de5b63/ServiceTags_Public_YYYYMMDD.json`
+2. Match your SWA's outbound IPs (from error messages) against `AzureCloud.<region>` entries
+3. Add the matching CIDR ranges to Azure SQL firewall as Start IP / End IP rules
+
+**For East Asia region, these 3 ranges cover all possible IPs:**
+- `20.6.128.0/17` → Start: `20.6.128.0` End: `20.6.255.255`
+- `20.239.0.0/16` → Start: `20.239.0.0` End: `20.239.255.255`
+- `20.255.0.0/16` → Start: `20.255.0.0` End: `20.255.255.255`
+
+Add these in Azure Portal → SQL Server → Networking → Firewall rules.
+
+
+### Database Schema
+
+**Candidates table:**
+```sql
+CREATE TABLE Candidates (
+  Id          INT IDENTITY(1,1) PRIMARY KEY,
+  FirstName   NVARCHAR(100) NOT NULL,
+  LastName    NVARCHAR(100) NOT NULL,
+  Email       NVARCHAR(255) NOT NULL UNIQUE,
+  Phone       NVARCHAR(20),
+  Position    NVARCHAR(100),
+  Status      NVARCHAR(50) DEFAULT 'Applied',
+  Notes       NVARCHAR(MAX),
+  CreatedAt   DATETIME2 DEFAULT GETUTCDATE(),
+  UpdatedAt   DATETIME2 DEFAULT GETUTCDATE()
+);
+```
 
 ### Naming Conventions
 
@@ -188,7 +235,9 @@ const { app } = require('@azure/functions');
 ## Common Issues
 
 - **404 on API calls**: Ensure `api_location` is `api` (not `api/src`) in the workflow YAML. Azure needs `host.json` in the root of the API location.
-- **Duplicate `message.js`**: `src/functions/message.js` is **NOT used**. The active API function is `api/src/functions/message.js`. The stale file in `src/` should be cleaned up.
+- **500 on API calls (SQL connection)**: Azure SQL firewall is blocking the SWA outbound IP. Check the error message for the IP address, then add the CIDR ranges (see Azure SQL Firewall section above).
+- **PUT/DELETE not supported**: Azure Static Web Apps doesn't reliably support PUT/DELETE methods. Use POST for all mutations instead.
+
 - **Git identity not set**: If commits fail with "Author identity unknown", set:
   ```bash
   git config --global user.name "YourName"
