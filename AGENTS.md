@@ -1,245 +1,186 @@
 # AGENTS.md
 
-This file provides guidance to AI coding agents operating in this repository.
+Guidance for AI coding agents operating in this repository.
 
 ## Project Overview
 
-**Vue 3 + Vite** frontend with an **Azure Functions v4** (Node.js) API backend, deployed to **Azure Static Web Apps** via GitHub Actions. The frontend fetches `/api/get-candidates` on mount to display a recruitment dashboard.
+**Vue 3 + Vite** frontend with **Azure Functions v4** (Node.js) API, deployed to **Azure Static Web Apps** via GitHub Actions. A multi-page recruitment dashboard with role-based views (HR Admin, Hiring Manager, Director).
 
 ### Key Paths
 
 | Path | Purpose |
 |------|---------|
-| `src/` | Vue 3 frontend source |
-| `src/functions/` | **Unused legacy dir** — do NOT edit these files |
-| `api/src/` | Azure Functions entry + setup |
-| `api/src/functions/` | Active Azure Function handlers (`.js`) |
-| `dist/` | Vite production build output |
-| `staticwebapp.config.json` | Azure SWA routing config |
+| `src/views/` | Page components (HRAdminPage, HiringManagerPage, DirectorPage) |
+| `src/components/` | Shared components (CandidateDetail, CommentList, NavBar) |
+| `src/router/` | Vue Router config (`index.js`) |
+| `src/functions/` | **Unused legacy dir** — do NOT edit |
+| `api/src/functions/` | Azure Function handlers (`.js`) |
+| `api/src/index.js` | Azure Functions entry point |
+| `api/src/functions/db.js` | SQL connection helper |
+| `staticwebapp.config.json` | Azure SWA routing (SPA fallback) |
 
 ### Tech Stack
 
-- **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3
-- **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.js` files)
-- **Database**: Azure SQL (`mssql` npm package), SQL auth (password from env var)
-- **CSS**: Tailwind CSS via `postcss` + `autoprefixer`
+- **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3, Vue Router 5
+- **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.js`)
+- **Database**: Azure SQL (`mssql` package), SQL auth (password from `AZURE_SQL_PASSWORD` env var)
 - **Deployment**: GitHub Actions → Azure Static Web Apps
-- **No TypeScript** — plain JavaScript throughout
-- **No test framework** — tests not yet configured
-- **No ESLint/Prettier** — no automated linting
+- **No TypeScript**, no ESLint/Prettier, no test framework
 
 ---
 
 ## Build / Dev Commands
 
-### Frontend (Vite)
-
 ```bash
-npm run dev        # Start Vite dev server (proxies /api → localhost:7071)
-npm run build      # Build for production → dist/
-```
+# Frontend (Vite) — run from project root
+npm run dev          # Dev server, proxies /api → localhost:7071
+npm run build        # Production build → dist/
 
-### API (Azure Functions)
+# API (Azure Functions) — run from api/ directory
+cd api && func start # NOT --script-root api/src
 
-```bash
-func start --script-root api/src   # Run API locally via Azure Functions Core Tools
-```
+# Database setup (one-time, after creating tables)
+curl -X POST http://localhost:7071/api/setup-db      # Candidates table
+curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, FK columns
 
-Or use VS Code Azure Functions extension. The API has its own `api/package.json` with `@azure/functions` dependency.
-
-### Tests
-
-**No test framework configured.** `npm test` is a no-op placeholder.
-
-To add tests (recommended: Vitest):
-
-```bash
-npm install -D vitest @vue/test-utils
-npx vitest run src/components/MyComponent.test.js   # Single test file
-npx vitest src/components/MyComponent.test.js        # Watch mode
-```
-
-### Linting
-
-**Not configured.** To add ESLint:
-
-```bash
-npm install -D eslint eslint-plugin-vue
-npx eslint src/           # Lint all source files
-npx eslint src/ --fix     # Auto-fix fixable issues
+# Tests — not configured (npm test is a no-op)
+# Linting — not configured
 ```
 
 ### CI/CD
 
-GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach-084b53200.yml`:
+`.github/workflows/azure-static-web-apps-gentle-beach-084b53200.yml`:
 - Triggers on push to `main` and PRs
-- Runs `npm install` → `npx vite build` → deploys with `Azure/static-web-apps-deploy@v1`
+- Runs `npm install` → `vite build` → deploys with `Azure/static-web-apps-deploy@v1`
 - Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
-### API Endpoints
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/api/health` | GET | Health check (verifies env vars are set) |
-| `/api/get-candidates` | GET | List all candidates |
-| `/api/get-candidate?id=X` | GET | Get single candidate |
-| `/api/create-candidate` | POST | Create new candidate |
-| `/api/update-candidate` | POST | Update candidate |
-| `/api/delete-candidate?id=X` | POST | Delete candidate |
-| `/api/setup-db` | POST | Create Candidates table (one-time) |
-
 
 ---
 
-## Code Style Guidelines
+## API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/health` | GET | Health check |
+| `/api/get-candidates` | GET | List all candidates (with requisition title) |
+| `/api/candidates-by-requisition?requisitionId=X` | GET | Candidates filtered by requisition |
+| `/api/get-candidate?id=X` | GET | Single candidate |
+| `/api/create-candidate` | POST | Create candidate (supports optional `requisitionId`) |
+| `/api/update-candidate` | POST | Update candidate status |
+| `/api/delete-candidate?id=X` | POST | Delete candidate |
+| `/api/requisitions` | GET | List requisitions (optional `?status=Open`) |
+| `/api/create-requisition` | POST | Create requisition |
+| `/api/comments?candidateId=X` | GET | Comments for candidate |
+| `/api/create-comment` | POST | Create comment (supports `rating`) |
+| `/api/setup-db` | POST | Create Candidates table |
+| `/api/setup-db-v2` | POST | Create Requisitions, Comments tables + FK columns |
+
+---
+
+## Code Style
 
 ### General
 
-- **ES modules** (`import`/`export`) in `src/` — frontend code
-- **CommonJS** (`require`/`module.exports`) in `api/src/` — API files use `.js` extension with `"type": "commonjs"` in `api/package.json`
-- No TypeScript — plain JavaScript only
-- No semicolons (existing code has none in JS files)
-- 2-space indentation
-- No trailing whitespace
-- Max line length: ~120 characters (soft limit)
+- **ES modules** (`import`/`export`) in `src/`; **CommonJS** (`require`/`module.exports`) in `api/src/`
+- No TypeScript, no semicolons, 2-space indent, ~120 char soft limit
 
 ### Vue 3 Components
 
-- Use **Options API** (`name`, `data`, `methods`, `mounted`) — matches `App.vue`
-- Component names: PascalCase (e.g., `UserProfile.vue`)
-- One component per file
-- Handle errors in templates with `v-if="error"` and styled error blocks
-- Use `async/await` in lifecycle hooks with `try/catch`
-- Data properties initialized with default values (`""`, `null`)
+- **Options API** only: `name`, `props`, `data`, `computed`, `methods`, `mounted`, `watch`
+- PascalCase filenames (`CandidateDetail.vue`)
+- Props with type/default; declare `emits` explicitly
+- Data initialized with defaults (`""`, `null`, `[]`, `false`)
+- `async mounted()` with `try/catch` for data fetching
+- Error display pattern: `this.error` data prop + `v-if="error"` red block in template
+- Success pattern: `this.success` data prop + `v-if="success"` green block
 
-### Styling (Tailwind CSS)
+### Styling (Tailwind)
 
-- Use Tailwind utility classes directly in templates
-- Tailwind config at `tailwind.config.js` scans `src/**/*.{vue,js,ts,jsx,tsx}`
-- Base styles / resets in `src/style.css` via `@layer base`
-- Color palette: `slate-*` (neutrals), `blue-*` (accents), `red-*` (errors)
-- Use `transition-colors duration-200` for hover effects on buttons
+- Utility classes directly in templates; no custom CSS classes
+- Palette: `slate-*` (neutrals), `blue-*` (accents/primary), `red-*` (errors), `green-*` (success)
+- Buttons: `bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200`
+- Cards: `bg-white rounded-xl shadow-lg p-6`
+- Status badges: conditional classes via helper methods returning Tailwind class strings
 
 ### Azure Functions
 
-- Each function gets its own `.js` file under `api/src/functions/`
-- **Function name IS the route path**: `create-candidate.js` → `/api/create-candidate`
-- Use `app.http(name, { methods, authLevel, handler })` pattern
-- **Use POST for mutations** — Azure SWA doesn't support PUT/DELETE methods reliably
-- Always log with `context.log(...)` for info, `context.error(...)` for errors
-- Return `{ body: JSON.stringify({ ... }) }` for JSON responses
-- Parse input via `request.query.get()`, `request.text()`, `request.json()`
-- Entry point `api/src/index.js` does global `app.setup({ enableHttpStream: true })`
+- One function per `.js` file; **filename = route** (`create-candidate.js` → `/api/create-candidate`)
+- Pattern: `app.http(name, { methods, authLevel, handler })`
+- **POST for all mutations** (Azure SWA doesn't reliably support PUT/DELETE)
+- Logging: `context.log()` for info, `context.error()` for errors
+- Return: `{ body: JSON.stringify({...}) }` or `{ status: NNN, body: JSON.stringify({...}) }`
+- Input: `request.json()` for POST body, `request.query.get()` for query params
 
-### Azure SQL Database
+### SQL Queries
 
-
-- Connection helper at `api/src/functions/db.js` exports `{ sql, getConnection, closeConnection }`
-- Uses SQL auth with hardcoded server/database/user; password from `process.env.AZURE_SQL_PASSWORD`
-- Set `AZURE_SQL_PASSWORD` in Azure Portal → Static Web App → Configuration → Environment variables
-- Use **parameterized queries** — never interpolate user input into SQL
-  ```js
-  const result = await pool.request()
-    .input('id', sql.Int, id)
-    .query('SELECT * FROM Candidates WHERE Id = @id')
-  ```
-- Always wrap DB calls in `try/catch` and return proper error status codes
-- Use `sql.NVarChar`, `sql.Int`, `sql.DateTime2` etc. for parameter types
-- One-time setup via `POST /api/setup-db` (creates tables if not exists)
-### Azure SQL Firewall
-
-Azure Static Web Apps uses a **pool of outbound IPs** that change frequently. Adding individual IPs to the firewall does NOT work. Instead, add **CIDR ranges** for the SWA region.
-
-**How to find the correct ranges:**
-1. Download Microsoft's official Azure IP ranges: `https://download.microsoft.com/download/7/1/d/71d86715-5596-4529-9b13-da13a5de5b63/ServiceTags_Public_YYYYMMDD.json`
-2. Match your SWA's outbound IPs (from error messages) against `AzureCloud.<region>` entries
-3. Add the matching CIDR ranges to Azure SQL firewall as Start IP / End IP rules
-
-**For East Asia region, these 3 ranges cover all possible IPs:**
-- `20.6.128.0/17` → Start: `20.6.128.0` End: `20.6.255.255`
-- `20.239.0.0/16` → Start: `20.239.0.0` End: `20.239.255.255`
-- `20.255.0.0/16` → Start: `20.255.0.0` End: `20.255.255.255`
-
-Add these in Azure Portal → SQL Server → Networking → Firewall rules.
-
-
-### Database Schema
-
-**Candidates table:**
-```sql
-CREATE TABLE Candidates (
-  Id          INT IDENTITY(1,1) PRIMARY KEY,
-  FirstName   NVARCHAR(100) NOT NULL,
-  LastName    NVARCHAR(100) NOT NULL,
-  Email       NVARCHAR(255) NOT NULL UNIQUE,
-  Phone       NVARCHAR(20),
-  Position    NVARCHAR(100),
-  Status      NVARCHAR(50) DEFAULT 'Applied',
-  Notes       NVARCHAR(MAX),
-  CreatedAt   DATETIME2 DEFAULT GETUTCDATE(),
-  UpdatedAt   DATETIME2 DEFAULT GETUTCDATE()
-);
-```
-
-### Naming Conventions
-
-| Item | Convention | Example |
-|------|-----------|---------|
-| Vue files | PascalCase | `UserProfile.vue` |
-| JS functions | camelCase | `fetchUserData` |
-| API function files | camelCase + `.js` | `message.js` |
-| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
-| CSS classes | kebab-case | `error-message` |
+- **Always parameterized** — never interpolate user input
+- Wrap in `try/catch`; return `{ status: 500, body: JSON.stringify({ error: err.message }) }`
+- Use `sql.NVarChar`, `sql.Int`, `sql.DateTime2` for parameter types
+- Graceful fallback: try JOIN query, catch and fall back to simpler query (see `get-candidates.js`)
 
 ### Imports
 
-**Frontend (`src/`):**
 ```js
-import { ref, computed } from 'vue'
+// Frontend
+import { createApp } from 'vue'
 import MyComponent from './MyComponent.vue'
 import './style.css'
+
+// API
+const { app } = require('@azure/functions')
+const { getConnection, sql } = require('./db.js')
 ```
 
-**API (`api/src/`):**
-```js
-const { app } = require('@azure/functions');
-```
+### Naming
+
+| Item | Convention | Example |
+|------|-----------|---------|
+| Vue files | PascalCase | `CandidateDetail.vue` |
+| Views | PascalCase + `Page` | `HRAdminPage.vue` |
+| JS functions | camelCase | `fetchCandidates` |
+| API files | kebab-case `.js` | `create-candidate.js` |
+| SQL columns | PascalCase | `FirstName`, `CreatedAt` |
+| Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
 
 ### Error Handling
 
-- Wrap `fetch` calls in `try/catch`; check `response.ok` before parsing
-- Use safe JSON parsing — read as `text()` first, then `JSON.parse()` to handle non-JSON errors
-  ```js
-  if (!response.ok) {
-    const text = await response.text()
-    try {
-      const data = JSON.parse(text)
-      throw new Error(data.error || `HTTP error! status: ${response.status}`)
-    } catch {
-      throw new Error(`HTTP error! status: ${response.status} - ${text.substring(0, 100)}`)
-    }
-  }
-  ```
-- Store errors in `this.error` data property; display with `v-if="error"` in template
-- Azure Functions: use `context.log` / `context.error`
+```js
+// Frontend fetch
+try {
+  const res = await fetch("/api/endpoint")
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  // use data
+} catch (err) {
+  this.error = err.message
+}
 
-### Git Conventions
+// Azure Function handler
+try {
+  const pool = await getConnection()
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query('SELECT * FROM Candidates WHERE Id = @id')
+  return { body: JSON.stringify({ candidates: result.recordset }) }
+} catch (err) {
+  context.error('Operation error:', err)
+  return { status: 500, body: JSON.stringify({ error: err.message }) }
+}
+```
 
-- Commit messages: imperative mood, short first line
-  - Good: `Fix Azure Static Web Apps api_location config`
-  - Bad: `fixed stuff` or `Fixed the bug`
-- Never commit `node_modules/`, `dist/`, `.env`, or secrets
-- Run `npm run build` before pushing to verify the build succeeds
+---
+
+## Database Schema
+
+- **Candidates**: Id, FirstName, LastName, Email (UNIQUE), Phone, Position, Status (default 'Applied'), Notes, RequisitionId (FK), CreatedAt, UpdatedAt
+- **Requisitions**: Id, Title, Department, Description, HiringManagerName, Status (default 'Open'), CreatedAt, UpdatedAt
+- **Comments**: Id, CandidateId (FK CASCADE), RequisitionId (FK), AuthorName, Role, CommentText, Rating, CreatedAt
 
 ---
 
 ## Common Issues
 
-- **404 on API calls**: Ensure `api_location` is `api` (not `api/src`) in the workflow YAML. Azure needs `host.json` in the root of the API location.
-- **500 on API calls (SQL connection)**: Azure SQL firewall is blocking the SWA outbound IP. Check the error message for the IP address, then add the CIDR ranges (see Azure SQL Firewall section above).
-- **PUT/DELETE not supported**: Azure Static Web Apps doesn't reliably support PUT/DELETE methods. Use POST for all mutations instead.
-
-- **Git identity not set**: If commits fail with "Author identity unknown", set:
-  ```bash
-  git config --global user.name "YourName"
-  git config --global user.email "you@example.com"
-  ```
+- **500 on API (SQL)**: Azure SQL firewall blocking SWA IP. Add CIDR ranges for your SWA region. Local IP must also be whitelisted.
+- **500 on candidates-by-requisition**: Run `POST /api/setup-db-v2` to create Requisitions table and FK columns.
+- **404 on API**: `api_location` must be `api` (not `api/src`) in workflow YAML.
+- **PUT/DELETE rejected**: Use POST for all mutations.
+- **`func start` fails**: Run from `api/` directory (not project root, not `api/src`). Set `AzureWebJobsStorage` to `UseDevelopmentStorage=true` in `api/local.settings.json`.
