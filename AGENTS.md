@@ -21,7 +21,7 @@ This file provides guidance to AI coding agents operating in this repository.
 
 - **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3
 - **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.js` files)
-- **Database**: Azure SQL (`mssql` npm package), Active Directory auth
+- **Database**: Azure SQL (`mssql` npm package), SQL auth (password from env var)
 - **CSS**: Tailwind CSS via `postcss` + `autoprefixer`
 - **Deployment**: GitHub Actions → Azure Static Web Apps
 - **No TypeScript** — plain JavaScript throughout
@@ -110,7 +110,9 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 ### Azure Functions
 
 - Each function gets its own `.js` file under `api/src/functions/`
+- **Function name IS the route path**: `create-candidate.js` → `/api/create-candidate`
 - Use `app.http(name, { methods, authLevel, handler })` pattern
+- **Use POST for mutations** — Azure SWA doesn't support PUT/DELETE methods reliably
 - Always log with `context.log(...)` for info, `context.error(...)` for errors
 - Return `{ body: JSON.stringify({ ... }) }` for JSON responses
 - Parse input via `request.query.get()`, `request.text()`, `request.json()`
@@ -119,7 +121,8 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 ### Azure SQL Database
 
 - Connection helper at `api/src/functions/db.js` exports `{ sql, getConnection, closeConnection }`
-- Connection string from `process.env.AZURE_SQL_CONNECTION_STRING` (set in `local.settings.json` for dev, Azure Portal for prod)
+- Uses SQL auth with hardcoded server/database/user; password from `process.env.AZURE_SQL_PASSWORD`
+- Set `AZURE_SQL_PASSWORD` in Azure Portal → Static Web App → Configuration → Environment variables
 - Use **parameterized queries** — never interpolate user input into SQL
   ```js
   const result = await pool.request()
@@ -157,8 +160,19 @@ const { app } = require('@azure/functions');
 ### Error Handling
 
 - Wrap `fetch` calls in `try/catch`; check `response.ok` before parsing
+- Use safe JSON parsing — read as `text()` first, then `JSON.parse()` to handle non-JSON errors
+  ```js
+  if (!response.ok) {
+    const text = await response.text()
+    try {
+      const data = JSON.parse(text)
+      throw new Error(data.error || `HTTP error! status: ${response.status}`)
+    } catch {
+      throw new Error(`HTTP error! status: ${response.status} - ${text.substring(0, 100)}`)
+    }
+  }
+  ```
 - Store errors in `this.error` data property; display with `v-if="error"` in template
-- Log to console: `console.error('Fetch error:', err)`
 - Azure Functions: use `context.log` / `context.error`
 
 ### Git Conventions
