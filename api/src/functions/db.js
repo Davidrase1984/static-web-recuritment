@@ -5,19 +5,15 @@ let pool = null
 async function getConnection() {
   if (pool) return pool
 
-  const server = process.env.AZURE_SQL_SERVER || 'azuresqlfcec.database.windows.net'
-  const database = process.env.AZURE_SQL_DATABASE || 'Recuritmentdb'
-  const user = process.env.AZURE_SQL_USER || 'fcec'
-  const password = process.env.AZURE_SQL_PASSWORD || ''
-
+  const password = process.env.AZURE_SQL_PASSWORD
   if (!password) {
     throw new Error('AZURE_SQL_PASSWORD environment variable is not set')
   }
 
   pool = await sql.connect({
-    server: server,
-    database: database,
-    user: user,
+    server: 'azuresqlfcec.database.windows.net',
+    database: 'Recuritmentdb',
+    user: 'fcec',
     password: password,
     options: {
       encrypt: true,
