@@ -126,7 +126,7 @@ export default {
       this.loading = true;
       this.error = null;
       try {
-        const response = await fetch("/api/candidates");
+        const response = await fetch("/api/get-candidates");
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const data = await response.json();
         this.candidates = data.candidates || [];
@@ -142,14 +142,19 @@ export default {
       this.error = null;
       this.success = null;
       try {
-        const response = await fetch("/api/candidate", {
+        const response = await fetch("/api/create-candidate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.form)
         });
         if (!response.ok) {
-          const data = await response.json();
-          throw new Error(data.error || `HTTP error! status: ${response.status}`);
+          const text = await response.text();
+          try {
+            const data = JSON.parse(text);
+            throw new Error(data.error || `HTTP error! status: ${response.status}`);
+          } catch {
+            throw new Error(`HTTP error! status: ${response.status} - ${text.substring(0, 100)}`);
+          }
         }
         this.success = "Candidate added successfully!";
         this.form = { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "" };
@@ -163,8 +168,8 @@ export default {
     },
     async updateStatus(candidate) {
       try {
-        const response = await fetch("/api/candidate", {
-          method: "PUT",
+        const response = await fetch("/api/update-candidate", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: candidate.Id, status: candidate.Status })
         });
@@ -178,7 +183,7 @@ export default {
     async deleteCandidate(id) {
       if (!confirm("Are you sure you want to delete this candidate?")) return;
       try {
-        const response = await fetch(`/api/candidate?id=${id}`, { method: "DELETE" });
+        const response = await fetch(`/api/delete-candidate?id=${id}`, { method: "POST" });
         if (!response.ok) throw new Error("Failed to delete candidate");
         this.success = "Candidate deleted";
         await this.fetchCandidates();

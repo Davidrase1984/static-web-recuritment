@@ -2,7 +2,7 @@ const { app } = require('@azure/functions')
 const { getConnection, sql } = require('./db.js')
 
 app.http('update-candidate', {
-  methods: ['PUT'],
+  methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {

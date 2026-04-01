@@ -2,7 +2,7 @@ const { app } = require('@azure/functions')
 const { getConnection, sql } = require('./db.js')
 
 app.http('delete-candidate', {
-  methods: ['DELETE'],
+  methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
