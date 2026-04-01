@@ -7,7 +7,19 @@ app.http('get-candidates', {
   handler: async (request, context) => {
     try {
       const pool = await getConnection()
-      const result = await pool.request().query('SELECT * FROM Candidates ORDER BY CreatedAt DESC')
+
+      let result
+      try {
+        result = await pool.request().query(`
+          SELECT c.*, r.Title AS RequisitionTitle
+          FROM Candidates c
+          LEFT JOIN Requisitions r ON c.RequisitionId = r.Id
+          ORDER BY c.CreatedAt DESC
+        `)
+      } catch (joinErr) {
+        context.log('Requisitions table not found, falling back to simple query')
+        result = await pool.request().query('SELECT * FROM Candidates ORDER BY CreatedAt DESC')
+      }
 
       context.log(`Retrieved ${result.recordset.length} candidates`)
       return { body: JSON.stringify({ candidates: result.recordset }) }
