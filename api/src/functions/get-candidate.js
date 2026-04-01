@@ -1,5 +1,5 @@
 const { app } = require('@azure/functions')
-const { getConnection, sql } = require('./db.cjs')
+const { getConnection, sql } = require('./db.js')
 
 app.http('get-candidate', {
   methods: ['GET'],

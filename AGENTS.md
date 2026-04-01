@@ -13,14 +13,14 @@ This file provides guidance to AI coding agents operating in this repository.
 | `src/` | Vue 3 frontend source |
 | `src/functions/` | **Unused legacy dir** — do NOT edit these files |
 | `api/src/` | Azure Functions entry + setup |
-| `api/src/functions/` | Active Azure Function handlers (`.cjs`) |
+| `api/src/functions/` | Active Azure Function handlers (`.js`) |
 | `dist/` | Vite production build output |
 | `staticwebapp.config.json` | Azure SWA routing config |
 
 ### Tech Stack
 
 - **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3
-- **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.cjs` files)
+- **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.js` files)
 - **Database**: Azure SQL (`mssql` npm package), Active Directory auth
 - **CSS**: Tailwind CSS via `postcss` + `autoprefixer`
 - **Deployment**: GitHub Actions → Azure Static Web Apps
@@ -83,7 +83,7 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 ### General
 
 - **ES modules** (`import`/`export`) in `src/` — frontend code
-- **CommonJS** (`require`/`module.exports`) in `api/src/` — API files use `.cjs` extension
+- **CommonJS** (`require`/`module.exports`) in `api/src/` — API files use `.js` extension with `"type": "commonjs"` in `api/package.json`
 - No TypeScript — plain JavaScript only
 - No semicolons (existing code has none in JS files)
 - 2-space indentation
@@ -109,16 +109,16 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 
 ### Azure Functions
 
-- Each function gets its own `.cjs` file under `api/src/functions/`
+- Each function gets its own `.js` file under `api/src/functions/`
 - Use `app.http(name, { methods, authLevel, handler })` pattern
 - Always log with `context.log(...)` for info, `context.error(...)` for errors
 - Return `{ body: JSON.stringify({ ... }) }` for JSON responses
 - Parse input via `request.query.get()`, `request.text()`, `request.json()`
-- Entry point `api/src/index.cjs` does global `app.setup({ enableHttpStream: true })`
+- Entry point `api/src/index.js` does global `app.setup({ enableHttpStream: true })`
 
 ### Azure SQL Database
 
-- Connection helper at `api/src/functions/db.cjs` exports `{ sql, getConnection, closeConnection }`
+- Connection helper at `api/src/functions/db.js` exports `{ sql, getConnection, closeConnection }`
 - Connection string from `process.env.AZURE_SQL_CONNECTION_STRING` (set in `local.settings.json` for dev, Azure Portal for prod)
 - Use **parameterized queries** — never interpolate user input into SQL
   ```js
@@ -136,7 +136,7 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 |------|-----------|---------|
 | Vue files | PascalCase | `UserProfile.vue` |
 | JS functions | camelCase | `fetchUserData` |
-| API function files | camelCase + `.cjs` | `message.cjs` |
+| API function files | camelCase + `.js` | `message.js` |
 | Constants | SCREAMING_SNAKE_CASE | `MAX_RETRIES` |
 | CSS classes | kebab-case | `error-message` |
 
@@ -174,7 +174,7 @@ const { app } = require('@azure/functions');
 ## Common Issues
 
 - **404 on API calls**: Ensure `api_location` is `api` (not `api/src`) in the workflow YAML. Azure needs `host.json` in the root of the API location.
-- **Duplicate `message.js`**: `src/functions/message.js` is **NOT used**. The active API function is `api/src/functions/message.cjs`. The stale file in `src/` should be cleaned up.
+- **Duplicate `message.js`**: `src/functions/message.js` is **NOT used**. The active API function is `api/src/functions/message.js`. The stale file in `src/` should be cleaned up.
 - **Git identity not set**: If commits fail with "Author identity unknown", set:
   ```bash
   git config --global user.name "YourName"
