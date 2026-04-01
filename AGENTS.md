@@ -21,6 +21,7 @@ This file provides guidance to AI coding agents operating in this repository.
 
 - **Frontend**: Vue 3 (Options API), Vite 6, Tailwind CSS 3
 - **API**: Azure Functions v4 (Node.js, `@azure/functions`), CommonJS (`.cjs` files)
+- **Database**: Azure SQL (`mssql` npm package), Active Directory auth
 - **CSS**: Tailwind CSS via `postcss` + `autoprefixer`
 - **Deployment**: GitHub Actions → Azure Static Web Apps
 - **No TypeScript** — plain JavaScript throughout
@@ -114,6 +115,20 @@ GitHub Actions workflow at `.github/workflows/azure-static-web-apps-gentle-beach
 - Return `{ body: JSON.stringify({ ... }) }` for JSON responses
 - Parse input via `request.query.get()`, `request.text()`, `request.json()`
 - Entry point `api/src/index.cjs` does global `app.setup({ enableHttpStream: true })`
+
+### Azure SQL Database
+
+- Connection helper at `api/src/functions/db.cjs` exports `{ sql, getConnection, closeConnection }`
+- Connection string from `process.env.AZURE_SQL_CONNECTION_STRING` (set in `local.settings.json` for dev, Azure Portal for prod)
+- Use **parameterized queries** — never interpolate user input into SQL
+  ```js
+  const result = await pool.request()
+    .input('id', sql.Int, id)
+    .query('SELECT * FROM Candidates WHERE Id = @id')
+  ```
+- Always wrap DB calls in `try/catch` and return proper error status codes
+- Use `sql.NVarChar`, `sql.Int`, `sql.DateTime2` etc. for parameter types
+- One-time setup via `POST /api/setup-db` (creates tables if not exists)
 
 ### Naming Conventions
 
