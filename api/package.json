@@ -12,5 +12,5 @@
   "devDependencies": {
     "azure-functions-core-tools": "^4.9.0"
   },
-  "main": "src/{index.js,functions/*.js}"
+  "main": "src/{index.cjs,functions/*.cjs}"
 }
