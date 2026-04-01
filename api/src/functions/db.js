@@ -1,14 +1,15 @@
 const sql = require('mssql')
 
-const config = {
-  connectionString: process.env.AZURE_SQL_CONNECTION_STRING
-}
+const connectionString = process.env.AZURE_SQL_CONNECTION_STRING
 
 let pool = null
 
 async function getConnection() {
+  if (!connectionString) {
+    throw new Error('AZURE_SQL_CONNECTION_STRING environment variable is not set')
+  }
   if (pool) return pool
-  pool = await sql.connect(config.connectionString)
+  pool = await sql.connect(connectionString)
   pool.on('error', () => { pool = null })
   return pool
 }
