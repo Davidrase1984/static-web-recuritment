@@ -1,5 +1,5 @@
 const sql = require('mssql')
-const { DefaultAzureCredential } = require('@azure/identity')
+const { ManagedIdentityCredential } = require('@azure/identity')
 
 const connectionString = process.env.AZURE_SQL_CONNECTION_STRING
 
@@ -11,7 +11,7 @@ async function getConnection() {
   }
   if (pool) return pool
 
-  const credential = new DefaultAzureCredential()
+  const credential = new ManagedIdentityCredential()
   const tokenResponse = await credential.getToken('https://database.windows.net/')
 
   pool = await sql.connect({
