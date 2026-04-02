@@ -3,7 +3,12 @@ const sql = require('mssql')
 let pool = null
 
 async function getConnection() {
-  if (pool) return pool
+  if (pool) {
+    try {
+      await pool.close()
+    } catch (e) {}
+    pool = null
+  }
 
   const password = process.env.AZURE_SQL_PASSWORD
   if (!password) {
@@ -13,7 +18,7 @@ async function getConnection() {
   pool = await sql.connect({
     server: 'azuresqlfcec.database.windows.net',
     database: 'Recuritmentdb',
-    user: 'fcec',
+    user: process.env.AZURE_SQL_USER || 'fcec',
     password: password,
     options: {
       encrypt: true,
