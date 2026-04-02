@@ -12,15 +12,24 @@ app.http('candidates-by-requisition', {
       }
 
       const pool = await getConnection()
-      const result = await pool.request()
-        .input('requisitionId', sql.Int, parseInt(requisitionId))
-        .query(`
-          SELECT c.*, r.Title AS RequisitionTitle
-          FROM Candidates c
-          LEFT JOIN Requisitions r ON c.RequisitionId = r.Id
-          WHERE c.RequisitionId = @requisitionId
-          ORDER BY c.CreatedAt DESC
-        `)
+
+      let result
+      try {
+        result = await pool.request()
+          .input('requisitionId', sql.Int, parseInt(requisitionId))
+          .query(`
+            SELECT c.*, r.Title AS RequisitionTitle
+            FROM Candidates c
+            LEFT JOIN Requisitions r ON c.RequisitionId = r.Id
+            WHERE c.RequisitionId = @requisitionId
+            ORDER BY c.CreatedAt DESC
+          `)
+      } catch (joinErr) {
+        context.log('Requisitions table not found, falling back to simple query')
+        result = await pool.request()
+          .input('requisitionId', sql.Int, parseInt(requisitionId))
+          .query('SELECT * FROM Candidates WHERE RequisitionId = @requisitionId ORDER BY CreatedAt DESC')
+      }
 
       context.log(`Retrieved ${result.recordset.length} candidates for requisition ${requisitionId}`)
       return { body: JSON.stringify({ candidates: result.recordset }) }
