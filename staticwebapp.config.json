@@ -3,12 +3,6 @@
     "rewrite": "/index.html",
     "exclude": ["/assets/*", "/images/*"]
   },
-  "routes": [
-    {
-      "route": "/api/*",
-      "backendUri": "https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/api/{*url}"
-    }
-  ],
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff"
   }
