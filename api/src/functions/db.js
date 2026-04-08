@@ -22,7 +22,7 @@ async function getConnection() {
     password: password,
     options: {
       encrypt: true,
-      trustServerCertificate: false
+      trustServerCertificate: true
     }
   })
 
