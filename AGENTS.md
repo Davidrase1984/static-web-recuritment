@@ -49,10 +49,13 @@ curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, F
 
 ### CI/CD
 
-`.github/workflows/azure-static-web-apps-gentle-beach-084b53200.yml`:
+`.github/workflows/azure-static-web-apps-orange-hill-0f44e6000.yml`:
 - Triggers on push to `main` and PRs
-- Runs `npm install` → `vite build` → deploys with `Azure/static-web-apps-deploy@v1`
-- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+- Runs `npm install` → `vite build` → deploys to SWA with `Azure/static-web-apps-deploy@v1`
+- Config: `app_location: "/"`, `api_location: ""`, `output_location: "dist"`
+- API is deployed separately to Function App via `func azure functionapp publish app-recuritment`
+
+**Note**: The Function App (`app-recuritment`) is deployed manually using Azure Functions Core Tools. CI/CD for API deployment requires adding `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` secret to GitHub.
 
 ---
 
@@ -174,6 +177,22 @@ try {
 - **Candidates**: Id, FirstName, LastName, Email (UNIQUE), Phone, Position, Status (default 'Applied'), Notes, RequisitionId (FK), CreatedAt, UpdatedAt
 - **Requisitions**: Id, Title, Department, Description, HiringManagerName, Status (default 'Open'), CreatedAt, UpdatedAt
 - **Comments**: Id, CandidateId (FK CASCADE), RequisitionId (FK), AuthorName, Role, CommentText, Rating, CreatedAt
+
+---
+
+## Architecture
+
+### Current Setup
+- **Static Web App** (orange-hill): Serves frontend at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/`
+- **Function App** (app-recuritment): Hosts API separately at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/api/*`
+- API proxy configured in `staticwebapp.config.json` routes `/api/*` to the Function App
+
+### Deployment
+
+```bash
+# Deploy API to Azure Function App (after az login)
+cd api && func azure functionapp publish app-recuritment
+```
 
 ---
 
