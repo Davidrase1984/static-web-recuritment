@@ -16,7 +16,7 @@ async function getConnection() {
   }
 
   pool = await sql.connect({
-    server: 'azuresqlfcec.privatelink.database.windows.net',
+    server: 'azuresqlfcec.database.windows.net',
     database: 'Recuritmentdb',
     user: process.env.AZURE_SQL_USER || 'fcec',
     password: password,
