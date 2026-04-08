@@ -6,7 +6,7 @@
   "routes": [
     {
       "route": "/api/*",
-      "backendUri": "https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.privatelink.azurewebsites.net/api/{*url}"
+      "backendUri": "https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/api/{*url}"
     }
   ],
   "globalHeaders": {
