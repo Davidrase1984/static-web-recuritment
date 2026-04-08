@@ -3,18 +3,6 @@
     "rewrite": "/index.html",
     "exclude": ["/assets/*", "/images/*"]
   },
-  "routes": [
-    {
-      "route": "/*",
-      "allowedRoles": ["authenticated"]
-    }
-  ],
-  "responseOverrides": {
-    "401": {
-      "statusCode": 302,
-      "redirect": "/.auth/login/aad"
-    }
-  },
   "globalHeaders": {
     "X-Content-Type-Options": "nosniff"
   }

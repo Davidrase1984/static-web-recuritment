@@ -177,6 +177,14 @@ try {
 
 ---
 
+## Authentication
+
+- Azure AD authentication was **removed** (previously configured in `staticwebapp.config.json`)
+- All routes are now public (no `allowedRoles` required)
+- To re-enable: add `routes` and `responseOverrides` blocks per Azure SWA docs
+
+---
+
 ## Common Issues
 
 - **500 on API (SQL)**: Azure SQL firewall blocking SWA IP. Add CIDR ranges for your SWA region. Local IP must also be whitelisted.
