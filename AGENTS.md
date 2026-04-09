@@ -74,11 +74,13 @@ curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, F
 | `/api/delete-candidate?id=X` | POST | Delete candidate |
 | `/api/requisitions` | GET | List requisitions (optional `?status=Open`) |
 | `/api/create-requisition` | POST | Create requisition |
+| `/api/upload-jd` | POST | Upload JD document (multipart/form-data) |
 | `/api/comments?candidateId=X` | GET | Comments for candidate |
 | `/api/create-comment` | POST | Create comment (supports `rating`) |
 | `/api/setup-db` | POST | Create Candidates table |
 | `/api/setup-db-v2` | POST | Create Requisitions, Comments tables + FK columns |
 | `/api/setup-db-v3` | POST | Add new Requisitions columns (JobRequisitionNumber, HiringManager, JDIntiationDate, JobDescription, HiringType, FY, Period) |
+| `/api/setup-db-v4` | POST | Add JobDescriptionUrl column |
 
 ---
 

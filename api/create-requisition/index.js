@@ -10,7 +10,7 @@ app.http('create-requisition', {
       const { 
         title, department, description,
         jobRequisitionNumber, hiringManager, jdIntiationDate,
-        jobDescription, hiringType, fy, period
+        jobDescription, hiringType, fy, period, jobDescriptionUrl
       } = body
 
       if (!title) {
@@ -29,10 +29,11 @@ app.http('create-requisition', {
         .input('hiringType', sql.NVarChar(50), hiringType || null)
         .input('fy', sql.NVarChar(10), fy || null)
         .input('period', sql.NVarChar(10), period || null)
+        .input('jobDescriptionUrl', sql.NVarChar(500), jobDescriptionUrl || null)
         .query(`
-          INSERT INTO Requisitions (Title, Department, Description, JobRequisitionNumber, HiringManager, JDIntiationDate, JobDescription, HiringType, FY, Period)
+          INSERT INTO Requisitions (Title, Department, Description, JobRequisitionNumber, HiringManager, JDIntiationDate, JobDescription, HiringType, FY, Period, JobDescriptionUrl)
           OUTPUT INSERTED.*
-          VALUES (@title, @department, @description, @jobRequisitionNumber, @hiringManager, @jdIntiationDate, @jobDescription, @hiringType, @fy, @period)
+          VALUES (@title, @department, @description, @jobRequisitionNumber, @hiringManager, @jdIntiationDate, @jobDescription, @hiringType, @fy, @period, @jobDescriptionUrl)
         `)
 
       context.log('Created requisition:', result.recordset[0].Title)

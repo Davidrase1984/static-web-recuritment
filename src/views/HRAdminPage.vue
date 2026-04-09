@@ -60,6 +60,12 @@
         <textarea v-model="reqForm.jobDescription" placeholder="Job Description" rows="2"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 md:col-span-3"></textarea>
         <div class="md:col-span-3">
+          <label class="block text-sm font-medium text-slate-700 mb-1">Attach JD Document</label>
+          <input type="file" ref="jdFile" @change="handleJdFileChange" accept=".pdf,.doc,.docx,.txt"
+            class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+          <p v-if="reqForm.jobDescriptionUrl" class="text-sm text-green-600 mt-1">File attached: {{ getFileNameFromUrl(reqForm.jobDescriptionUrl) }}</p>
+        </div>
+        <div class="md:col-span-3">
           <button type="submit" :disabled="submittingReq"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50">
             {{ submittingReq ? 'Creating...' : 'Create Requisition' }}
@@ -129,11 +135,12 @@ export default {
       loading: false,
       submitting: false,
       submittingReq: false,
+      uploadingJd: false,
       error: null,
       success: null,
       hrStatusOptions: ['Applied', 'Screening', 'Selected', 'Rejected', 'Hold'],
       form: { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "", requisitionId: "" },
-      reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" },
+      reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "", jobDescriptionUrl: "" },
       apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
@@ -177,13 +184,47 @@ export default {
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         this.success = "Requisition created!"
-        this.reqForm = { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" }
+        this.reqForm = { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "", jobDescriptionUrl: "" }
+        if (this.$refs.jdFile) this.$refs.jdFile.value = ''
         await this.fetchRequisitions()
       } catch (err) {
         this.error = err.message
       } finally {
         this.submittingReq = false
       }
+    },
+    async handleJdFileChange(event) {
+      const file = event.target.files[0]
+      if (!file) return
+      
+      this.uploadingJd = true
+      this.error = null
+      
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        const res = await fetch(this.apiBase + "/api/upload-jd", {
+          method: 'POST',
+          body: formData
+        })
+        
+        if (!res.ok) throw new Error(`Upload failed: HTTP ${res.status}`)
+        
+        const data = await res.json()
+        this.reqForm.jobDescriptionUrl = data.url
+        this.success = 'JD document uploaded successfully!'
+      } catch (err) {
+        this.error = 'Failed to upload JD document: ' + err.message
+        if (this.$refs.jdFile) this.$refs.jdFile.value = ''
+      } finally {
+        this.uploadingJd = false
+      }
+    },
+    getFileNameFromUrl(url) {
+      if (!url) return ''
+      const parts = url.split('/')
+      return parts[parts.length - 1] || url
     },
     async createCandidate() {
       this.submitting = true
