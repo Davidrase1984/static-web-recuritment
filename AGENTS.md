@@ -16,6 +16,7 @@ Guidance for AI coding agents operating in this repository.
 | `api/` | Azure Functions for SWA deployment (one folder per function) |
 | `api/db.js` | SQL connection helper |
 | `api/*/index.js` | Azure Function handlers |
+| `api/src/` | Azure Functions for local development (separate Function App) |
 | `staticwebapp.config.json` | Azure SWA routing (SPA fallback) |
 
 ### Tech Stack
@@ -35,8 +36,10 @@ Guidance for AI coding agents operating in this repository.
 npm run dev          # Dev server, proxies /api → localhost:7071
 npm run build        # Production build → dist/
 
-# API (Azure Functions) — run from api/ directory
-cd api && func start # NOT --script-root api/src
+# API (Azure Functions) — run from api/src directory for local dev
+cd api/src && func start
+
+# For SWA deployment, use api/ folder (auto-detected by SWA)
 
 # Database setup (one-time, after creating tables)
 curl -X POST http://localhost:7071/api/setup-db      # Candidates table
