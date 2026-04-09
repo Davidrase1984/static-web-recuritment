@@ -65,7 +65,8 @@ export default {
       loading: false,
       error: null,
       success: null,
-      directorStatusOptions: ['Offer', 'Hired', 'Rejected']
+      directorStatusOptions: ['Offer', 'Hired', 'Rejected'],
+      apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
   computed: {
@@ -85,7 +86,7 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const res = await fetch("/api/get-candidates")
+        const res = await fetch(this.apiBase + "/api/get-candidates")
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.candidates = data.candidates || []
@@ -97,7 +98,7 @@ export default {
     },
     async updateStatus(candidate) {
       try {
-        const res = await fetch("/api/update-candidate", {
+        const res = await fetch(this.apiBase + "/api/update-candidate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: candidate.Id, status: candidate.Status })

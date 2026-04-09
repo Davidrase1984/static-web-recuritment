@@ -68,7 +68,8 @@ export default {
       newComment: "",
       newRating: 0,
       authorName: "",
-      submitting: false
+      submitting: false,
+      apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
   async mounted() {
@@ -83,7 +84,7 @@ export default {
     async fetchComments() {
       this.loading = true
       try {
-        const res = await fetch(`/api/comments?candidateId=${this.candidateId}`)
+        const res = await fetch(this.apiBase + "/api/comments?candidateId=" + this.candidateId)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.comments = data.comments || []
@@ -105,7 +106,7 @@ export default {
         if (this.requisitionId) body.requisitionId = this.requisitionId
         if (this.showRating && this.newRating > 0) body.rating = this.newRating
 
-        const res = await fetch("/api/create-comment", {
+        const res = await fetch(this.apiBase + "/api/create-comment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)

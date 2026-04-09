@@ -26,7 +26,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
       - name: Build
-        run: VITE_API_URL=https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.privatelink.azurewebsites.net npx vite build
+        run: VITE_API_URL=https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net npx vite build
       - name: Azure login
         uses: Azure/login@v1
         with:

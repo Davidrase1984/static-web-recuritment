@@ -185,14 +185,22 @@ try {
 ### Current Setup
 - **Static Web App** (orange-hill): Serves frontend at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/`
 - **Function App** (app-recuritment): Hosts API separately at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/api/*`
-- API proxy configured in `staticwebapp.config.json` routes `/api/*` to the Function App
+- Frontend calls Function App directly via `VITE_API_URL` absolute URL
 
-### Deployment
+### Build / Deploy
 
 ```bash
+# Frontend build with API URL
+VITE_API_URL=https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net npx vite build
+
 # Deploy API to Azure Function App (after az login)
 cd api && func azure functionapp publish app-recuritment
 ```
+
+### CI/CD
+
+- GitHub Actions builds frontend with `VITE_API_URL` set to Function App URL
+- API is deployed manually (or via Functions Core Tools)
 
 ---
 

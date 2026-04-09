@@ -67,7 +67,8 @@ export default {
       loading: false,
       error: null,
       success: null,
-      hmStatusOptions: ['Interview', 'Selected', 'Rejected']
+      hmStatusOptions: ['Interview', 'Selected', 'Rejected'],
+      apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
   computed: {
@@ -87,7 +88,7 @@ export default {
     },
     async fetchRequisitions() {
       try {
-        const res = await fetch("/api/requisitions?status=Open")
+        const res = await fetch(this.apiBase + "/api/requisitions?status=Open")
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.requisitions = data.requisitions || []
@@ -100,7 +101,7 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const res = await fetch(`/api/candidates-by-requisition?requisitionId=${this.selectedRequisitionId}`)
+        const res = await fetch(this.apiBase + "/api/candidates-by-requisition?requisitionId=" + this.selectedRequisitionId)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.candidates = data.candidates || []
@@ -112,7 +113,7 @@ export default {
     },
     async updateStatus(candidate) {
       try {
-        const res = await fetch("/api/update-candidate", {
+        const res = await fetch(this.apiBase + "/api/update-candidate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: candidate.Id, status: candidate.Status })

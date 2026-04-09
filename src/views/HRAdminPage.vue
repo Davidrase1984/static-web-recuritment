@@ -100,7 +100,8 @@ export default {
       success: null,
       hrStatusOptions: ['Applied', 'Screening', 'Selected', 'Rejected', 'Hold'],
       form: { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "", requisitionId: "" },
-      reqForm: { title: "", department: "", description: "", hiringManagerName: "" }
+      reqForm: { title: "", department: "", description: "", hiringManagerName: "" },
+      apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
   async mounted() {
@@ -111,7 +112,7 @@ export default {
       this.loading = true
       this.error = null
       try {
-        const res = await fetch("/api/get-candidates")
+        const res = await fetch(this.apiBase + "/api/get-candidates")
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.candidates = data.candidates || []
@@ -123,7 +124,7 @@ export default {
     },
     async fetchRequisitions() {
       try {
-        const res = await fetch("/api/requisitions")
+        const res = await fetch(this.apiBase + "/api/requisitions")
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
         this.requisitions = data.requisitions || []
@@ -136,7 +137,7 @@ export default {
       this.error = null
       this.success = null
       try {
-        const res = await fetch("/api/create-requisition", {
+        const res = await fetch(this.apiBase + "/api/create-requisition", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.reqForm)
@@ -156,7 +157,7 @@ export default {
       this.error = null
       this.success = null
       try {
-        const res = await fetch("/api/create-candidate", {
+        const res = await fetch(this.apiBase + "/api/create-candidate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(this.form)
@@ -177,7 +178,7 @@ export default {
     },
     async updateStatus(candidate) {
       try {
-        const res = await fetch("/api/update-candidate", {
+        const res = await fetch(this.apiBase + "/api/update-candidate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: candidate.Id, status: candidate.Status })
