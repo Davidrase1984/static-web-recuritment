@@ -26,8 +26,6 @@
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input v-model="reqForm.hiringManager" placeholder="Hiring Manager"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <input v-model="reqForm.hiringManagerName" placeholder="Hiring Manager Name"
-          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input v-model="reqForm.jdIntiationDate" type="date" placeholder="JD Intiation Date"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <select v-model="reqForm.hiringType"
@@ -135,7 +133,7 @@ export default {
       success: null,
       hrStatusOptions: ['Applied', 'Screening', 'Selected', 'Rejected', 'Hold'],
       form: { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "", requisitionId: "" },
-      reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", hiringManagerName: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" },
+      reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" },
       apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
@@ -179,7 +177,7 @@ export default {
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         this.success = "Requisition created!"
-        this.reqForm = { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", hiringManagerName: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" }
+        this.reqForm = { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" }
         await this.fetchRequisitions()
       } catch (err) {
         this.error = err.message
