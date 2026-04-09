@@ -13,10 +13,9 @@ Guidance for AI coding agents operating in this repository.
 | `src/views/` | Page components (HRAdminPage, HiringManagerPage, DirectorPage) |
 | `src/components/` | Shared components (CandidateDetail, CommentList, NavBar) |
 | `src/router/` | Vue Router config (`index.js`) |
-| `src/functions/` | **Unused legacy dir** — do NOT edit |
-| `api/src/functions/` | Azure Function handlers (`.js`) |
-| `api/src/index.js` | Azure Functions entry point |
-| `api/src/functions/db.js` | SQL connection helper |
+| `api/` | Azure Functions for SWA deployment (one folder per function) |
+| `api/db.js` | SQL connection helper |
+| `api/*/index.js` | Azure Function handlers |
 | `staticwebapp.config.json` | Azure SWA routing (SPA fallback) |
 
 ### Tech Stack
@@ -52,10 +51,10 @@ curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, F
 `.github/workflows/azure-static-web-apps-orange-hill-0f44e6000.yml`:
 - Triggers on push to `main` and PRs
 - Runs `npm install` → `vite build` → deploys to SWA with `Azure/static-web-apps-deploy@v1`
-- Config: `app_location: "/"`, `api_location: ""`, `output_location: "dist"`
-- API is deployed separately to Function App via `func azure functionapp publish app-recuritment`
+- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+- Frontend and API deploy together via GitHub Actions
 
-**Note**: The Function App (`app-recuritment`) is deployed manually using Azure Functions Core Tools. CI/CD for API deployment requires adding `AZURE_FUNCTIONAPP_PUBLISH_PROFILE` secret to GitHub.
+**Note**: API uses SWA's built-in Azure Functions. For separate Function App deployment, use `func azure functionapp publish app-recuritment`.
 
 ---
 
@@ -183,24 +182,126 @@ try {
 ## Architecture
 
 ### Current Setup
-- **Static Web App** (orange-hill): Serves frontend at `https://www.fcecrecuritmentsite.emerson.com/`
-- **Function App** (app-recuritment): Hosts API separately at `https://www.fcecrecuritmentsite.emerson.com/api/*`
-- Frontend calls Function App directly via `VITE_API_URL` absolute URL
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           USER ACCESS                                       │
+│                                                                             │
+│  Browser ──▶ https://www.fcecrecuritmentsite.emerson.com                   │
+│                         │                                                   │
+│                    Application Gateway                                      │
+│                    (Private VNet: 10.14.11.x)                              │
+│                         │                                                   │
+│                    Azure Static Web App                                     │
+│                    ┌─────────────┬─────────────┐                            │
+│                    │   Frontend  │   API       │                            │
+│                    │   (dist/)  │   /api/*    │                            │
+│                    │  Vue 3     │  Azure      │                            │
+│                    │  Vite      │  Functions  │                            │
+│                    │  Tailwind  │  v4         │                            │
+│                    └─────┬──────┴──────┬──────┘                            │
+│                          │            │                                    │
+│                    VNet Private Link │                                    │
+│                          │            │                                    │
+│                    ┌─────▼────────────▼─────┐                             │
+│                    │     Azure SQL          │                             │
+│                    │  privatelink.database  │                             │
+│                    │  IP: 10.14.11.103     │                             │
+│                    └───────────────────────┘                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Build / Deploy
 
 ```bash
-# Frontend build with API URL
+# Frontend build with API URL (GitHub Actions does this automatically)
 VITE_API_URL=https://www.fcecrecuritmentsite.emerson.com npx vite build
 
-# Deploy API to Azure Function App (after az login)
-cd api && func azure functionapp publish app-recuritment
+# Local API testing
+cd api && func start
 ```
 
 ### CI/CD
 
-- GitHub Actions builds frontend with `VITE_API_URL` set to Function App URL
-- API is deployed manually (or via Functions Core Tools)
+- GitHub Actions builds frontend with `VITE_API_URL` set to the public URL
+- Both frontend and API deploy together via `Azure/static-web-apps-deploy@v1`
+- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+
+### Environment Variables
+
+Configured in **Static Web Apps** → Configuration → Application settings:
+- `AZURE_SQL_PASSWORD` - SQL authentication password
+- `AZURE_SQL_USER` - SQL username (default: `fcec`)
+
+### Data Flow Example: Get Candidates
+
+```
+Browser                          Azure Static Web App                    Azure SQL
+  │                                       │                                  │
+  │ GET /api/get-candidates              │                                  │
+  │─────────────────────────────────────▶│                                  │
+  │                                       │                                  │
+  │                                       │ SQL Query via privatelink         │
+  │                                       │─────────────────────────────────▶│
+  │                                       │                                  │
+  │                                       │        { candidates: [...] }     │
+  │                                       │◀─────────────────────────────────│
+  │                                       │                                  │
+  │ { candidates: [...] }                 │                                  │
+  │◀─────────────────────────────────────│                                  │
+```
+
+### Local Development vs Production
+
+| Component | Local Dev | Production |
+|-----------|----------|------------|
+| Frontend | `npm run dev` (Vite) | GitHub Actions → SWA |
+| API | `func start` (port 7071) | Deployed with SWA |
+| VITE_API_URL | Empty (uses proxy) | `https://www.fcecrecuritmentsite.emerson.com` |
+| SQL Connection | hosts file → privatelink | VNet → privatelink |
+
+### API Structure (SWA Format)
+
+```
+api/
+├── host.json
+├── db.js                          # SQL connection (privatelink)
+├── proxies.json
+├── get-candidates/
+│   └── index.js
+├── create-candidate/
+│   └── index.js
+├── update-candidate/
+│   └── index.js
+├── delete-candidate/
+│   └── index.js
+├── get-candidate/
+│   └── index.js
+├── requisitions/
+│   └── index.js
+├── create-requisition/
+│   └── index.js
+├── comments/
+│   └── index.js
+├── create-comment/
+│   └── index.js
+├── candidates-by-requisition/
+│   └── index.js
+├── setup-db/
+│   └── index.js
+├── setup-db-v2/
+│   └── index.js
+└── health/
+    └── index.js
+```
+
+### Private Network
+
+| Resource | Private DNS | IP Address |
+|----------|-------------|------------|
+| Azure SQL | `azuresqlfcec.privatelink.database.windows.net` | `10.14.11.103` |
+| Function App | `app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.privatelink.azurewebsites.net` | `10.14.11.105` |
+| SCM Site | `app-recuritment-f0c6dshzdhbmcsct.scm.southeastasia-01.privatelink.azurewebsites.net` | `10.14.11.105` |
 
 ---
 
