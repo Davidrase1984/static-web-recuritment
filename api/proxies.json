@@ -1,0 +1,5 @@
+{
+  "scriptFile": "../dist/functions.js",
+  "entryPoint": "*.js",
+  "bindings": []
+}
