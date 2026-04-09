@@ -75,6 +75,7 @@ curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, F
 | `/api/create-comment` | POST | Create comment (supports `rating`) |
 | `/api/setup-db` | POST | Create Candidates table |
 | `/api/setup-db-v2` | POST | Create Requisitions, Comments tables + FK columns |
+| `/api/setup-db-v3` | POST | Add new Requisitions columns (JobRequisitionNumber, HiringManager, JDIntiationDate, JobDescription, HiringType, FY, Period) |
 
 ---
 

@@ -17,16 +17,51 @@
 
     <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
       <h2 class="text-xl font-semibold text-slate-800 mb-4">Create Requisition</h2>
-      <form @submit.prevent="createRequisition" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form @submit.prevent="createRequisition" class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <input v-model="reqForm.title" placeholder="Job Title *" required
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input v-model="reqForm.jobRequisitionNumber" placeholder="Job Requisition Number"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input v-model="reqForm.department" placeholder="Department"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <input v-model="reqForm.hiringManager" placeholder="Hiring Manager"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <input v-model="reqForm.hiringManagerName" placeholder="Hiring Manager Name"
           class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        <textarea v-model="reqForm.description" placeholder="Description" rows="2"
-          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-        <div class="md:col-span-2">
+        <input v-model="reqForm.jdIntiationDate" type="date" placeholder="JD Intiation Date"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <select v-model="reqForm.hiringType"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">Hiring Type</option>
+          <option value="On Role">On Role</option>
+          <option value="Permanent">Permanent</option>
+        </select>
+        <select v-model="reqForm.fy"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">FY</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+          <option value="2027">2027</option>
+        </select>
+        <select v-model="reqForm.period"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">Period</option>
+          <option value="P1">P1</option>
+          <option value="P2">P2</option>
+          <option value="P3">P3</option>
+          <option value="P4">P4</option>
+          <option value="P5">P5</option>
+          <option value="P6">P6</option>
+          <option value="P7">P7</option>
+          <option value="P8">P8</option>
+          <option value="P9">P9</option>
+          <option value="P10">P10</option>
+          <option value="P11">P11</option>
+          <option value="P12">P12</option>
+        </select>
+        <textarea v-model="reqForm.jobDescription" placeholder="Job Description" rows="2"
+          class="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 md:col-span-3"></textarea>
+        <div class="md:col-span-3">
           <button type="submit" :disabled="submittingReq"
             class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50">
             {{ submittingReq ? 'Creating...' : 'Create Requisition' }}
@@ -100,7 +135,7 @@ export default {
       success: null,
       hrStatusOptions: ['Applied', 'Screening', 'Selected', 'Rejected', 'Hold'],
       form: { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "", requisitionId: "" },
-      reqForm: { title: "", department: "", description: "", hiringManagerName: "" },
+      reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", hiringManagerName: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" },
       apiBase: import.meta.env.VITE_API_URL || ""
     }
   },
@@ -144,7 +179,7 @@ export default {
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         this.success = "Requisition created!"
-        this.reqForm = { title: "", department: "", description: "", hiringManagerName: "" }
+        this.reqForm = { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", hiringManagerName: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "" }
         await this.fetchRequisitions()
       } catch (err) {
         this.error = err.message
