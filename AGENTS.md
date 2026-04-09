@@ -183,15 +183,15 @@ try {
 ## Architecture
 
 ### Current Setup
-- **Static Web App** (orange-hill): Serves frontend at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/`
-- **Function App** (app-recuritment): Hosts API separately at `https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net/api/*`
+- **Static Web App** (orange-hill): Serves frontend at `https://www.fcecrecuritmentsite.emerson.com/`
+- **Function App** (app-recuritment): Hosts API separately at `https://www.fcecrecuritmentsite.emerson.com/api/*`
 - Frontend calls Function App directly via `VITE_API_URL` absolute URL
 
 ### Build / Deploy
 
 ```bash
 # Frontend build with API URL
-VITE_API_URL=https://app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.azurewebsites.net npx vite build
+VITE_API_URL=https://www.fcecrecuritmentsite.emerson.com npx vite build
 
 # Deploy API to Azure Function App (after az login)
 cd api && func azure functionapp publish app-recuritment
