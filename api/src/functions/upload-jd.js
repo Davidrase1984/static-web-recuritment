@@ -6,16 +6,11 @@ app.http('upload-jd', {
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
-      const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
+      const sasUrl = process.env.AZURE_STORAGE_SAS_URL
       const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'jobdescriptions'
       
-      if (!accountName) {
-        return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_ACCOUNT_NAME not configured' }) }
-      }
-
-      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING
-      if (!connectionString) {
-        return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_CONNECTION_STRING not configured' }) }
+      if (!sasUrl) {
+        return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_SAS_URL not configured' }) }
       }
 
       const multipartData = await request.formData()
@@ -28,7 +23,7 @@ app.http('upload-jd', {
       const fileName = file.name
       const fileBuffer = await file.arrayBuffer()
       
-      const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString)
+      const blobServiceClient = new BlobServiceClient(sasUrl)
       const containerClient = blobServiceClient.getContainerClient(containerName)
       await containerClient.createIfNotExists({ access: 'blob' })
       
