@@ -373,7 +373,8 @@ export default {
       periods: ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12'],
       form: { firstName: "", lastName: "", email: "", phone: "", position: "", notes: "", requisitionId: "" },
       reqForm: { title: "", jobRequisitionNumber: "", department: "", hiringManager: "", jdIntiationDate: "", jobDescription: "", hiringType: "", fy: "", period: "", jobDescriptionUrl: "" },
-      apiBase: import.meta.env.VITE_API_URL || ""
+      apiBase: import.meta.env.VITE_API_URL || "",
+      uploadUrl: import.meta.env.VITE_UPLOAD_URL || ""
     }
   },
   computed: {
@@ -518,7 +519,7 @@ export default {
       try {
         const formData = new FormData()
         formData.append('file', file)
-        const res = await fetch(this.apiBase + "/api/upload-jd", { method: 'POST', body: formData })
+        const res = await fetch((this.uploadUrl || this.apiBase) + "/api/upload-jd", { method: 'POST', body: formData })
         if (!res.ok) throw new Error(`Upload failed: HTTP ${res.status}`)
         const data = await res.json()
         this.reqForm.jobDescriptionUrl = data.url
