@@ -33,17 +33,17 @@ app.http('upload-jd', {
       
       const timestamp = Date.now()
       const blobName = `${timestamp}-${fileName}`
-      const blobClient = containerClient.getBlobClient(blobName)
+      const blockBlobClient = containerClient.getBlockBlobClient(blobName)
       
-      context.log('Upload JD - Uploading to:', blobClient.url)
+      context.log('Upload JD - Uploading to:', blockBlobClient.url)
       
-      await blobClient.uploadData(fileBuffer, {
+      await blockBlobClient.uploadData(fileBuffer, {
         blobHTTPHeaders: {
           blobContentType: file.type || 'application/octet-stream'
         }
       })
 
-      const fileUrl = blobClient.url
+      const fileUrl = blockBlobClient.url
       context.log('Upload JD - Success:', fileUrl)
 
       return {
