@@ -335,3 +335,5 @@ api/src/
 - **PUT/DELETE rejected**: Use POST for all mutations.
 - **`func start` fails**: Run from `api/` directory (not `api/src`). Ensure `@azure/storage-blob` is installed.
 - **Functions not found**: Ensure `index.js` requires all function files with correct import paths (`../db.js` not `./db.js`).
+- **Upload fails (not a function)**: Use `getBlockBlobClient()` instead of `getBlobClient()` for upload operations.
+- **Upload 500**: Ensure `AZURE_STORAGE_CONNECTION_STRING` is set in Function App Application settings.
