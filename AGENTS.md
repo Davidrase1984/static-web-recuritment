@@ -70,10 +70,10 @@ curl -X POST http://localhost:7071/api/setup-db-v4   # JobDescriptionUrl column
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/health` | GET | Health check |
-| `/api/get-candidates` | GET | List all candidates (with requisition title) |
+| `/api/get-candidates` | GET | List all candidates (with requisition title, stage name) |
 | `/api/candidates-by-requisition?requisitionId=X` | GET | Candidates filtered by requisition |
-| `/api/get-candidate?id=X` | GET | Single candidate |
-| `/api/create-candidate` | POST | Create candidate (supports optional `requisitionId`) |
+| `/api/get-candidate?id=X` | GET | Single candidate (includes stage name) |
+| `/api/create-candidate` | POST | Create candidate (Stage defaults to 1 - Applied) |
 | `/api/update-candidate` | POST | Update candidate status |
 | `/api/delete-candidate?id=X` | POST | Delete candidate |
 | `/api/requisitions` | GET | List requisitions (optional `?status=Open`) |
@@ -81,10 +81,14 @@ curl -X POST http://localhost:7071/api/setup-db-v4   # JobDescriptionUrl column
 | `/api/upload-jd` | POST | Upload JD document (multipart/form-data) |
 | `/api/comments?candidateId=X` | GET | Comments for candidate |
 | `/api/create-comment` | POST | Create comment (supports `rating`) |
+| `/api/stage-transition` | POST | Move candidate to next stage (role-based) |
+| `/api/get-stages` | GET | List all stages with permissions |
+| `/api/get-candidate-history?candidateId=X` | GET | Get stage transition history |
 | `/api/setup-db` | POST | Create Candidates table |
 | `/api/setup-db-v2` | POST | Create Requisitions, Comments tables + FK columns |
-| `/api/setup-db-v3` | POST | Add new Requisitions columns (JobRequisitionNumber, HiringManager, JDIntiationDate, JobDescription, HiringType, FY, Period) |
+| `/api/setup-db-v3` | POST | Add new Requisitions columns |
 | `/api/setup-db-v4` | POST | Add JobDescriptionUrl column |
+| `/api/setup-db-v5` | POST | Add Stage column + StageHistory table |
 
 ---
 
@@ -183,9 +187,41 @@ try {
 
 ## Database Schema
 
-- **Candidates**: Id, FirstName, LastName, Email (UNIQUE), Phone, Position, Status (default 'Applied'), Notes, RequisitionId (FK), CreatedAt, UpdatedAt
+- **Candidates**: Id, FirstName, LastName, Email (UNIQUE), Phone, Position, Status, Stage (1-15), Notes, RequisitionId (FK), CreatedAt, UpdatedAt
 - **Requisitions**: Id, Title, Department, Description, HiringManagerName, Status (default 'Open'), CreatedAt, UpdatedAt
 - **Comments**: Id, CandidateId (FK CASCADE), RequisitionId (FK), AuthorName, Role, CommentText, Rating, CreatedAt
+- **StageHistory**: Id, CandidateId (FK), FromStage, ToStage, ChangedBy, Role, Notes, CreatedAt
+
+## Recruitment Pipeline Stages
+
+| Stage | Name | Managed By |
+|-------|------|------------|
+| 1 | Applied | System |
+| 2 | Screening | HR Admin |
+| 3 | Technical Interview | Hiring Manager |
+| 4 | Technical Selected | Hiring Manager |
+| 5 | Technical Rejected | Hiring Manager |
+| 6 | Technical Hold | Hiring Manager |
+| 7 | HR Selected | HR Admin |
+| 8 | HR Rejected | HR Admin |
+| 9 | HR Hold | HR Admin |
+| 10 | Director Review | Director |
+| 11 | Director Selected | Director |
+| 12 | Director Rejected | Director |
+| 13 | Offer Released | HR Admin |
+| 14 | Offer Accepted | HR Admin |
+| 15 | Offer Revoked | HR Admin |
+
+### Role-Based Transition Permissions
+
+| Transition | HR Admin | Hiring Manager | Director |
+|------------|----------|----------------|----------|
+| Applied → Screening | ✅ | ❌ | ❌ |
+| Screening → Technical/Hr/Hold | ✅ | ❌ | ❌ |
+| Technical → HR Selected/Hold/Rejected | ❌ | ✅ | ❌ |
+| HR → Director Review/Rejected | ✅ | ❌ | ❌ |
+| Director → Offer/Rejected | ❌ | ❌ | ✅ |
+| Offer → Accepted/Revoked | ✅ | ❌ | ❌ |
 
 ---
 

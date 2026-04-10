@@ -1,6 +1,24 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
 
+const STAGES = {
+  1: 'Applied',
+  2: 'Screening',
+  3: 'Technical Interview',
+  4: 'Technical Selected',
+  5: 'Technical Rejected',
+  6: 'Technical Hold',
+  7: 'HR Selected',
+  8: 'HR Rejected',
+  9: 'HR Hold',
+  10: 'Director Review',
+  11: 'Director Selected',
+  12: 'Director Rejected',
+  13: 'Offer Released',
+  14: 'Offer Accepted',
+  15: 'Offer Revoked'
+}
+
 app.http('get-candidate', {
   methods: ['GET'],
   authLevel: 'anonymous',
@@ -20,7 +38,12 @@ app.http('get-candidate', {
         return { status: 404, body: JSON.stringify({ error: 'Candidate not found' }) }
       }
 
-      return { body: JSON.stringify({ candidate: result.recordset[0] }) }
+      const candidate = {
+        ...result.recordset[0],
+        StageName: STAGES[result.recordset[0].Stage] || STAGES[1] || 'Applied'
+      }
+
+      return { body: JSON.stringify({ candidate }) }
     } catch (err) {
       context.error('Get candidate error:', err)
       return {

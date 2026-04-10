@@ -1,6 +1,24 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
 
+const STAGES = {
+  1: 'Applied',
+  2: 'Screening',
+  3: 'Technical Interview',
+  4: 'Technical Selected',
+  5: 'Technical Rejected',
+  6: 'Technical Hold',
+  7: 'HR Selected',
+  8: 'HR Rejected',
+  9: 'HR Hold',
+  10: 'Director Review',
+  11: 'Director Selected',
+  12: 'Director Rejected',
+  13: 'Offer Released',
+  14: 'Offer Accepted',
+  15: 'Offer Revoked'
+}
+
 app.http('create-candidate', {
   methods: ['POST'],
   authLevel: 'anonymous',
@@ -61,10 +79,15 @@ app.http('create-candidate', {
           `)
       }
 
+      const candidate = {
+        ...result.recordset[0],
+        StageName: STAGES[result.recordset[0].Stage] || STAGES[1] || 'Applied'
+      }
+
       context.log('Created candidate:', result.recordset[0].Email)
       return {
         status: 201,
-        body: JSON.stringify({ message: 'Candidate created', candidate: result.recordset[0] })
+        body: JSON.stringify({ message: 'Candidate created', candidate })
       }
     } catch (err) {
       context.error('Create candidate error:', err)
