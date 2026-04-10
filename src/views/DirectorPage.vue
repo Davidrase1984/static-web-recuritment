@@ -52,29 +52,29 @@
           variant="default"
         />
         <StatCard
-          label="Hired"
-          :value="statusCounts.Hired || 0"
-          subtitle="Successfully placed"
+          label="Director Review"
+          :value="statusCounts['Director Review'] || 0"
+          subtitle="Awaiting decision"
           icon="check"
           variant="success"
           highlight
-          accentColor="#10b981"
+          accentColor="#6366f1"
         />
         <StatCard
-          label="In Offer"
-          :value="statusCounts.Offer || 0"
+          label="Offer Released"
+          :value="statusCounts['Offer Released'] || 0"
           subtitle="Awaiting acceptance"
           icon="offer"
           variant="info"
           highlight
-          accentColor="#2563EB"
+          accentColor="#0891b2"
         />
         <StatCard
-          label="Rejected"
-          :value="statusCounts.Rejected || 0"
-          subtitle="Not selected"
+          label="Offer Accepted"
+          :value="statusCounts['Offer Accepted'] || 0"
+          subtitle="Successfully placed"
           icon="reject"
-          variant="danger"
+          variant="success"
         />
       </div>
 
@@ -93,16 +93,10 @@
                 <input v-model="searchQuery" type="text" placeholder="Search candidates..."
                   class="pl-10 pr-4 py-2 w-full sm:w-64 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200" />
               </div>
-              <select v-model="statusFilter"
+              <select v-model="stageFilter"
                 class="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent cursor-pointer">
-                <option value="">All Status</option>
-                <option value="Applied">Applied</option>
-                <option value="Screening">Screening</option>
-                <option value="Interview">Interview</option>
-                <option value="Selected">Selected</option>
-                <option value="Offer">Offer</option>
-                <option value="Hired">Hired</option>
-                <option value="Rejected">Rejected</option>
+                <option value="">All Stages</option>
+                <option v-for="s in directorAccessibleStages" :key="s.stage" :value="s.name">{{ s.name }}</option>
               </select>
             </div>
           </div>
@@ -139,23 +133,23 @@
                   </div>
                 </div>
               </div>
-              <div class="hidden sm:flex items-center gap-6 ml-4">
-                <div class="text-right min-w-0">
-                  <p class="text-sm text-slate-900 truncate">{{ candidate.Position || '--' }}</p>
-                  <p class="text-xs text-slate-400">{{ candidate.RequisitionTitle || 'No requisition' }}</p>
+                <div class="hidden sm:flex items-center gap-6 ml-4">
+                  <div class="text-right min-w-0">
+                    <p class="text-sm text-slate-900 truncate">{{ candidate.Position || '--' }}</p>
+                    <p class="text-xs text-slate-400">{{ candidate.RequisitionTitle || 'No requisition' }}</p>
+                  </div>
+                  <div class="flex-shrink-0">
+                    <StatusBadge :status="candidate.StageName || candidate.Status" />
+                  </div>
+                  <div class="flex-shrink-0">
+                    <button @click="toggleExpand(candidate.Id)"
+                      class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all duration-200">
+                      <svg class="w-5 h-5 transition-transform duration-200" :class="{ 'rotate-180': expandedId === candidate.Id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-                <div class="flex-shrink-0">
-                  <StatusBadge :status="candidate.Status" />
-                </div>
-                <div class="flex-shrink-0">
-                  <button @click="toggleExpand(candidate.Id)"
-                    class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all duration-200">
-                    <svg class="w-5 h-5 transition-transform duration-200" :class="{ 'rotate-180': expandedId === candidate.Id }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
             </div>
 
             <div v-if="expandedId === candidate.Id" class="mt-4 pt-4 border-t border-gray-100">
@@ -172,8 +166,16 @@
                       <span class="text-slate-900 font-medium">{{ formatDate(candidate.CreatedAt) }}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                      <span class="text-slate-500">Status</span>
-                      <StatusBadge :status="candidate.Status" />
+                      <span class="text-slate-500">Stage</span>
+                      <span class="text-slate-900 font-medium">{{ candidate.StageName || 'Applied' }}</span>
+                    </div>
+                    <div v-if="getNextStages(candidate.Stage).length > 0" class="flex justify-between items-center text-sm pt-2 mt-2 border-t border-slate-200">
+                      <span class="text-slate-500">Move to Stage</span>
+                      <select v-model="candidate.nextStage" @change="transitionStage(candidate)"
+                        class="text-xs px-2 py-1 border border-gray-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 cursor-pointer">
+                        <option value="">Select stage...</option>
+                        <option v-for="s in getNextStages(candidate.Stage)" :key="s.stage" :value="s.stage">{{ s.name }}</option>
+                      </select>
                     </div>
                     <div v-if="candidate.Notes" class="pt-2 mt-2 border-t border-slate-200">
                       <span class="text-slate-500 text-xs block mb-1">Notes</span>
@@ -210,22 +212,29 @@ export default {
   data() {
     return {
       candidates: [],
+      stages: [],
       loading: false,
       error: null,
       success: null,
       searchQuery: '',
-      statusFilter: '',
+      stageFilter: '',
       expandedId: null,
-      apiBase: import.meta.env.VITE_API_URL || ""
+      apiBase: import.meta.env.VITE_API_URL || "",
+      currentUser: 'Director',
+      currentRole: 'Director'
     }
   },
   computed: {
     statusCounts() {
       const counts = {}
       for (const c of this.candidates) {
-        counts[c.Status] = (counts[c.Status] || 0) + 1
+        const stage = c.StageName || c.Status || 'Applied'
+        counts[stage] = (counts[stage] || 0) + 1
       }
       return counts
+    },
+    directorAccessibleStages() {
+      return this.stages.filter(s => s.permission && s.permission.roles && s.permission.roles.includes('Director'))
     },
     filteredCandidates() {
       let result = this.candidates
@@ -239,8 +248,8 @@ export default {
         )
       }
       
-      if (this.statusFilter) {
-        result = result.filter(c => c.Status === this.statusFilter)
+      if (this.stageFilter) {
+        result = result.filter(c => (c.StageName || 'Applied') === this.stageFilter)
       }
       
       return result
@@ -248,8 +257,19 @@ export default {
   },
   async mounted() {
     await this.fetchCandidates()
+    await this.fetchStages()
   },
   methods: {
+    async fetchStages() {
+      try {
+        const res = await fetch(this.apiBase + "/api/get-stages")
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        this.stages = data.stages || []
+      } catch (err) {
+        console.error("Fetch stages error:", err)
+      }
+    },
     async fetchCandidates() {
       this.loading = true
       this.error = null
@@ -262,6 +282,53 @@ export default {
         this.error = err.message
       } finally {
         this.loading = false
+      }
+    },
+    getNextStages(currentStage) {
+      const stageNum = typeof currentStage === 'string' ? this.getStageNumFromName(currentStage) : (currentStage || 1)
+      const currentStageName = this.stages.find(s => s.stage === stageNum)?.name || 'Applied'
+      const stage = this.stages.find(s => s.name === currentStageName)
+      if (!stage || !stage.permission || !stage.permission.roles.includes('Director')) {
+        return []
+      }
+      return stage.permission.nextStages.map(num => ({
+        stage: num,
+        name: this.stages.find(s => s.stage === num)?.name || `Stage ${num}`
+      }))
+    },
+    getStageNumFromName(name) {
+      const stage = this.stages.find(s => s.name === name)
+      return stage ? stage.stage : 1
+    },
+    async transitionStage(candidate) {
+      if (!candidate.nextStage) return
+      try {
+        const res = await fetch(this.apiBase + "/api/stage-transition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            candidateId: candidate.Id,
+            toStage: parseInt(candidate.nextStage),
+            role: this.currentRole,
+            changedBy: this.currentUser,
+            notes: `Moved to ${candidate.nextStage}`
+          })
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          this.error = data.error || 'Failed to transition stage'
+          candidate.nextStage = ''
+          return
+        }
+        this.success = `Candidate moved to ${data.toStageName}`
+        candidate.Stage = data.toStage
+        candidate.StageName = data.toStageName
+        candidate.Status = data.toStage
+        candidate.nextStage = ''
+        await this.fetchCandidates()
+      } catch (err) {
+        this.error = err.message
+        candidate.nextStage = ''
       }
     },
     toggleExpand(id) {
