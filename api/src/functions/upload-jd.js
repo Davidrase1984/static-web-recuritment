@@ -9,6 +9,9 @@ app.http('upload-jd', {
       const sasUrl = process.env.AZURE_STORAGE_SAS_URL
       const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'jobdescriptions'
       
+      context.log('Upload JD - SAS URL configured:', !!sasUrl)
+      context.log('Upload JD - Container:', containerName)
+      
       if (!sasUrl) {
         return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_SAS_URL not configured' }) }
       }
@@ -20,16 +23,19 @@ app.http('upload-jd', {
         return { status: 400, body: JSON.stringify({ error: 'No file provided' }) }
       }
 
-      const fileName = file.name
+      const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const fileBuffer = await file.arrayBuffer()
+      
+      context.log('Upload JD - File:', fileName, 'Size:', fileBuffer.byteLength)
       
       const blobServiceClient = new BlobServiceClient(sasUrl)
       const containerClient = blobServiceClient.getContainerClient(containerName)
-      await containerClient.createIfNotExists({ access: 'blob' })
       
       const timestamp = Date.now()
       const blobName = `${timestamp}-${fileName}`
       const blobClient = containerClient.getBlobClient(blobName)
+      
+      context.log('Upload JD - Uploading to:', blobClient.url)
       
       await blobClient.uploadData(fileBuffer, {
         blobHTTPHeaders: {
@@ -38,7 +44,7 @@ app.http('upload-jd', {
       })
 
       const fileUrl = blobClient.url
-      context.log('Uploaded JD:', fileName, 'to', fileUrl)
+      context.log('Upload JD - Success:', fileUrl)
 
       return {
         status: 201,
@@ -49,8 +55,9 @@ app.http('upload-jd', {
         })
       }
     } catch (err) {
-      context.error('Upload error:', err)
-      return { status: 500, body: JSON.stringify({ error: err.message }) }
+      context.error('Upload error:', err.message)
+      context.error('Upload error details:', err)
+      return { status: 500, body: JSON.stringify({ error: 'Upload failed: ' + err.message }) }
     }
   }
 })
