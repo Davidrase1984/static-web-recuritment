@@ -13,10 +13,11 @@ Guidance for AI coding agents operating in this repository.
 | `src/views/` | Page components (HRAdminPage, HiringManagerPage, DirectorPage) |
 | `src/components/` | Shared components (CandidateDetail, CommentList, NavBar) |
 | `src/router/` | Vue Router config (`index.js`) |
-| `api/` | Azure Functions for SWA deployment (one folder per function) |
-| `api/db.js` | SQL connection helper |
-| `api/*/index.js` | Azure Function handlers |
-| `api/src/` | Azure Functions for local development (separate Function App) |
+| `api/` | Legacy SWA functions (deprecated, not deployed) |
+| `api/src/` | **Active** standalone Azure Functions (VNet integrated, linked to SWA) |
+| `api/src/index.js` | Function loader (registers all functions) |
+| `api/src/functions/` | Individual Azure Function handlers |
+| `api/src/db.js` | SQL connection helper |
 | `staticwebapp.config.json` | Azure SWA routing (SPA fallback) |
 
 ### Tech Stack
@@ -36,14 +37,13 @@ Guidance for AI coding agents operating in this repository.
 npm run dev          # Dev server, proxies /api → localhost:7071
 npm run build        # Production build → dist/
 
-# API (Azure Functions) — run from api/src directory for local dev
-cd api/src && func start
-
-# For SWA deployment, use api/ folder (auto-detected by SWA)
+# API (Azure Functions) — run from api/ directory for local dev
+cd api && func start  # Runs on port 7071 by default
 
 # Database setup (one-time, after creating tables)
 curl -X POST http://localhost:7071/api/setup-db      # Candidates table
 curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, FK columns
+curl -X POST http://localhost:7071/api/setup-db-v4   # JobDescriptionUrl column
 
 # Tests — not configured (npm test is a no-op)
 # Linting — not configured
@@ -51,13 +51,17 @@ curl -X POST http://localhost:7071/api/setup-db-v2   # Requisitions, Comments, F
 
 ### CI/CD
 
-`.github/workflows/azure-static-web-apps-orange-hill-0f44e6000.yml`:
-- Triggers on push to `main` and PRs
-- Runs `npm install` → `vite build` → deploys to SWA with `Azure/static-web-apps-deploy@v1`
-- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
-- Frontend and API deploy together via GitHub Actions
+**Two separate deployments:**
 
-**Note**: API uses SWA's built-in Azure Functions. For separate Function App deployment, use `func azure functionapp publish app-recuritment`.
+1. **SWA Workflow** (`.github/workflows/azure-static-web-apps-orange-hill-0f44e6000.yml`):
+   - Deploys frontend only
+   - Config: `app_location: "/"`, `api_location: ""`, `output_location: "dist"`
+   - `api_location: ""` disables SWA managed functions
+
+2. **Function App** (separate GitHub Actions or `func azure functionapp publish`):
+   - Deploys `api/src/` to standalone Function App
+   - Function App is **linked** to SWA as backend
+   - SWA routes `/api/*` to linked Function App via reverse proxy
 
 ---
 
@@ -133,9 +137,9 @@ import { createApp } from 'vue'
 import MyComponent from './MyComponent.vue'
 import './style.css'
 
-// API
+// API (in api/src/functions/)
 const { app } = require('@azure/functions')
-const { getConnection, sql } = require('./db.js')
+const { getConnection, sql } = require('../db.js')
 ```
 
 ### Naming
@@ -196,24 +200,32 @@ try {
 │  Browser ──▶ https://www.fcecrecuritmentsite.emerson.com                   │
 │                         │                                                   │
 │                    Application Gateway                                      │
-│                    (Private VNet: 10.14.11.x)                              │
+│                    (Private VNet: 10.14.11.x)                               │
 │                         │                                                   │
 │                    Azure Static Web App                                     │
-│                    ┌─────────────┬─────────────┐                            │
-│                    │   Frontend  │   API       │                            │
-│                    │   (dist/)  │   /api/*    │                            │
-│                    │  Vue 3     │  Azure      │                            │
-│                    │  Vite      │  Functions  │                            │
-│                    │  Tailwind  │  v4         │                            │
-│                    └─────┬──────┴──────┬──────┘                            │
-│                          │            │                                    │
-│                    VNet Private Link │                                    │
-│                          │            │                                    │
-│                    ┌─────▼────────────▼─────┐                             │
-│                    │     Azure SQL          │                             │
-│                    │  privatelink.database  │                             │
-│                    │  IP: 10.14.11.103     │                             │
-│                    └───────────────────────┘                             │
+│                    ┌─────────────────────────────┐                           │
+│                    │   Frontend (dist/)          │                           │
+│                    │   Vue 3 + Vite + Tailwind │                           │
+│                    └──────────────┬──────────────┘                           │
+│                                   │                                          │
+│                    /api/* ────────▼──────────────┐                           │
+│                                   │              │                           │
+│                    ┌──────────────▼──────────────▼──────────────┐          │
+│                    │     Standalone Function App                │          │
+│                    │     (VNet Integrated)                      │          │
+│                    │     app-recuritment                        │          │
+│                    └──────────────┬─────────────────────────────┘          │
+│                                   │                                          │
+│                    ┌──────────────▼──────────────┐                          │
+│                    │   Azure Storage (Private)   │                          │
+│                    │   webappstorageaccount.blob │                          │
+│                    └─────────────────────────────┘                          │
+│                                   │                                          │
+│                    ┌──────────────▼──────────────┐                          │
+│                    │   Azure SQL (Private)         │                          │
+│                    │   azuresqlfcec.privatelink  │                          │
+│                    │   IP: 10.14.11.103           │                          │
+│                    └─────────────────────────────┘                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -230,31 +242,37 @@ cd api && func start
 ### CI/CD
 
 - GitHub Actions builds frontend with `VITE_API_URL` set to the public URL
-- Both frontend and API deploy together via `Azure/static-web-apps-deploy@v1`
-- Config: `app_location: "/"`, `api_location: "api"`, `output_location: "dist"`
+- SWA routes `/api/*` to linked Function App (reverse proxy)
+- Two separate deployments: SWA (frontend) + Function App (backend)
 
 ### Environment Variables
 
-Configured in **Static Web Apps** → Configuration → Application settings:
+**Function App** → Configuration → Application settings:
 - `AZURE_SQL_PASSWORD` - SQL authentication password
 - `AZURE_SQL_USER` - SQL username (default: `fcec`)
+- `AZURE_STORAGE_CONNECTION_STRING` - Storage account connection string
+
+**SWA** (if needed):
+- No environment variables needed - uses linked backend
 
 ### Data Flow Example: Get Candidates
 
 ```
-Browser                          Azure Static Web App                    Azure SQL
-  │                                       │                                  │
-  │ GET /api/get-candidates              │                                  │
-  │─────────────────────────────────────▶│                                  │
-  │                                       │                                  │
-  │                                       │ SQL Query via privatelink         │
-  │                                       │─────────────────────────────────▶│
-  │                                       │                                  │
-  │                                       │        { candidates: [...] }     │
-  │                                       │◀─────────────────────────────────│
-  │                                       │                                  │
-  │ { candidates: [...] }                 │                                  │
-  │◀─────────────────────────────────────│                                  │
+Browser                          Azure Static Web App              Function App (Linked)      Azure SQL
+  │                                       │                              │                         │
+  │ GET /api/get-candidates              │                              │                         │
+  │─────────────────────────────────────▶│                              │                         │
+  │                                       │ Reverse proxy to backend      │                         │
+  │                                       │─────────────────────────────▶│                         │
+  │                                       │                              │                         │
+  │                                       │                              │ SQL Query              │
+  │                                       │                              │────────────────────────▶│
+  │                                       │                              │                         │
+  │                                       │                              │    { candidates: [...] }
+  │                                       │                              │◀────────────────────────│
+  │                                       │      { candidates: [...] }   │                         │
+  │ { candidates: [...] }                 │◀────────────────────────────│                         │
+  │◀─────────────────────────────────────│                              │                         │
 ```
 
 ### Local Development vs Production
@@ -262,43 +280,33 @@ Browser                          Azure Static Web App                    Azure S
 | Component | Local Dev | Production |
 |-----------|----------|------------|
 | Frontend | `npm run dev` (Vite) | GitHub Actions → SWA |
-| API | `func start` (port 7071) | Deployed with SWA |
+| API | `func start` (port 7071) | Standalone Function App |
 | VITE_API_URL | Empty (uses proxy) | `https://www.fcecrecuritmentsite.emerson.com` |
-| SQL Connection | hosts file → privatelink | VNet → privatelink |
+| SQL Connection | Not available (private) | VNet → privatelink |
 
-### API Structure (SWA Format)
+### API Structure (Standalone Function App)
 
 ```
-api/
-├── host.json
-├── db.js                          # SQL connection (privatelink)
-├── proxies.json
-├── get-candidates/
-│   └── index.js
-├── create-candidate/
-│   └── index.js
-├── update-candidate/
-│   └── index.js
-├── delete-candidate/
-│   └── index.js
-├── get-candidate/
-│   └── index.js
-├── requisitions/
-│   └── index.js
-├── create-requisition/
-│   └── index.js
-├── comments/
-│   └── index.js
-├── create-comment/
-│   └── index.js
-├── candidates-by-requisition/
-│   └── index.js
-├── setup-db/
-│   └── index.js
-├── setup-db-v2/
-│   └── index.js
-└── health/
-    └── index.js
+api/src/
+├── host.json                          # Function host config
+├── local.settings.json                # Local environment vars
+├── package.json                       # Dependencies (@azure/functions, mssql, @azure/storage-blob)
+├── index.js                           # Loads all functions
+├── db.js                              # SQL connection helper
+└── functions/
+    ├── health.js
+    ├── get-candidates.js
+    ├── get-candidate.js
+    ├── create-candidate.js
+    ├── update-candidate.js
+    ├── delete-candidate.js
+    ├── requisitions.js
+    ├── create-requisition.js
+    ├── comments.js
+    ├── create-comment.js
+    ├── candidates-by-requisition.js
+    ├── upload-jd.js                   # Blob storage upload
+    └── setup-db-v4.js
 ```
 
 ### Private Network
@@ -306,8 +314,8 @@ api/
 | Resource | Private DNS | IP Address |
 |----------|-------------|------------|
 | Azure SQL | `azuresqlfcec.privatelink.database.windows.net` | `10.14.11.103` |
+| Storage | `webappstorageaccount.privatelink.blob.core.windows.net` | `10.14.11.106` |
 | Function App | `app-recuritment-f0c6dshzdhbmcsct.southeastasia-01.privatelink.azurewebsites.net` | `10.14.11.105` |
-| SCM Site | `app-recuritment-f0c6dshzdhbmcsct.scm.southeastasia-01.privatelink.azurewebsites.net` | `10.14.11.105` |
 
 ---
 
@@ -321,8 +329,9 @@ api/
 
 ## Common Issues
 
-- **500 on API (SQL)**: Azure SQL firewall blocking SWA IP. Add CIDR ranges for your SWA region. Local IP must also be whitelisted.
+- **500 on API (SQL)**: Azure SQL firewall blocking Function App IP. Add CIDR ranges for your Function App region. Local IP must also be whitelisted.
 - **500 on candidates-by-requisition**: Run `POST /api/setup-db-v2` to create Requisitions table and FK columns.
-- **404 on API**: `api_location` must be `api` (not `api/src`) in workflow YAML.
+- **404 on API**: Verify Function App is linked to SWA. Check Azure Portal → SWA → APIs.
 - **PUT/DELETE rejected**: Use POST for all mutations.
-- **`func start` fails**: Run from `api/` directory (not project root, not `api/src`). Set `AzureWebJobsStorage` to `UseDevelopmentStorage=true` in `api/local.settings.json`.
+- **`func start` fails**: Run from `api/` directory (not `api/src`). Ensure `@azure/storage-blob` is installed.
+- **Functions not found**: Ensure `index.js` requires all function files with correct import paths (`../db.js` not `./db.js`).
