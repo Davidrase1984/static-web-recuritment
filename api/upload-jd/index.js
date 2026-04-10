@@ -6,12 +6,6 @@ app.http('upload-jd', {
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
-      const contentType = request.headers.get('content-type') || ''
-      
-      if (!contentType.includes('multipart/form-data')) {
-        return { status: 400, body: JSON.stringify({ error: 'Expected multipart/form-data' }) }
-      }
-
       const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME
       const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'jobdescriptions'
       
@@ -19,39 +13,22 @@ app.http('upload-jd', {
         return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_ACCOUNT_NAME not configured' }) }
       }
 
-      const body = await request.text()
-      const boundary = contentType.split('boundary=')[1]
-      if (!boundary) {
-        return { status: 400, body: JSON.stringify({ error: 'Missing boundary' }) }
+      const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING
+      if (!connectionString) {
+        return { status: 500, body: JSON.stringify({ error: 'AZURE_STORAGE_CONNECTION_STRING not configured' }) }
       }
 
-      const parts = body.split('--' + boundary).filter(p => p.trim() && !p.includes('--'))
+      const multipartData = await request.formData()
+      const file = multipartData.get('file')
       
-      let fileName = ''
-      let fileData = null
-      
-      for (const part of parts) {
-        const headerEnd = part.indexOf('\r\n\r\n')
-        if (headerEnd === -1) continue
-        
-        const headers = part.substring(0, headerEnd)
-        const contentDisposition = headers.match(/Content-Disposition: form-data; name="file"; filename="([^"]+)"/)
-        
-        if (contentDisposition) {
-          fileName = contentDisposition[1]
-          fileData = part.substring(headerEnd + 4).replace(/\r\n$/, '')
-          break
-        }
-      }
-
-      if (!fileName || !fileData) {
+      if (!file) {
         return { status: 400, body: JSON.stringify({ error: 'No file provided' }) }
       }
 
-      const blobServiceClient = BlobServiceClient.fromConnectionString(
-        process.env.AZURE_STORAGE_CONNECTION_STRING
-      )
+      const fileName = file.name
+      const fileBuffer = await file.arrayBuffer()
       
+      const blobServiceClient = BlobServiceClient.fromConnectionString(connectionString)
       const containerClient = blobServiceClient.getContainerClient(containerName)
       await containerClient.createIfNotExists({ access: 'blob' })
       
@@ -59,8 +36,11 @@ app.http('upload-jd', {
       const blobName = `${timestamp}-${fileName}`
       const blobClient = containerClient.getBlobClient(blobName)
       
-      const buffer = Buffer.from(fileData, 'base64')
-      await blobClient.uploadData(buffer)
+      await blobClient.uploadData(fileBuffer, {
+        blobHTTPHeaders: {
+          blobContentType: file.type || 'application/octet-stream'
+        }
+      })
 
       const fileUrl = blobClient.url
       context.log('Uploaded JD:', fileName, 'to', fileUrl)
