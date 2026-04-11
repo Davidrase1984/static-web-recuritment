@@ -106,8 +106,10 @@ curl -X POST http://localhost:7071/api/setup-db-v4   # JobDescriptionUrl column
 - Props with type/default; declare `emits` explicitly
 - Data initialized with defaults (`""`, `null`, `[]`, `false`)
 - `async mounted()` with `try/catch` for data fetching
+- **Parallel loading in `mounted()`**: use `Promise.all()` for independent API calls (candidates, requisitions, stages)
 - Error display pattern: `this.error` data prop + `v-if="error"` red block in template
 - Success pattern: `this.success` data prop + `v-if="success"` green block
+- **Silent refresh pattern**: after mutations (create, transition), use `silentFetch*()` methods that update data without setting `this.loading = true` — this keeps the list visible while refreshing. Only show loading spinner on initial load and manual refresh
 
 ### Styling (Tailwind)
 
