@@ -2,9 +2,11 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HRAdminPage from '../views/HRAdminPage.vue'
 import HiringManagerPage from '../views/HiringManagerPage.vue'
 import DirectorPage from '../views/DirectorPage.vue'
+import ApplyPage from '../views/ApplyPage.vue'
 
 const routes = [
-  { path: '/', redirect: '/hr-admin' },
+  { path: '/', redirect: '/apply' },
+  { path: '/apply', name: 'Apply', component: ApplyPage },
   { path: '/hr-admin', name: 'HRAdmin', component: HRAdminPage },
   { path: '/hiring-manager', name: 'HiringManager', component: HiringManagerPage },
   { path: '/director', name: 'Director', component: DirectorPage }
