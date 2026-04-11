@@ -4,13 +4,13 @@ Guidance for AI coding agents operating in this repository.
 
 ## Project Overview
 
-**Vue 3 + Vite** frontend with **Azure Functions v4** (Node.js) API, deployed to **Azure Static Web Apps** via GitHub Actions. A multi-page recruitment dashboard with role-based views (HR Admin, Hiring Manager, Director).
+**Vue 3 + Vite** frontend with **Azure Functions v4** (Node.js) API, deployed to **Azure Static Web Apps** via GitHub Actions. A multi-page recruitment dashboard with role-based views (HR Admin, Hiring Manager, Director) and a public **Apply** page for candidates to browse and apply for open positions.
 
 ### Key Paths
 
 | Path | Purpose |
 |------|---------|
-| `src/views/` | Page components (HRAdminPage, HiringManagerPage, DirectorPage) |
+| `src/views/` | Page components (ApplyPage, HRAdminPage, HiringManagerPage, DirectorPage) |
 | `src/components/` | Shared components (CandidateDetail, CommentList, NavBar) |
 | `src/router/` | Vue Router config (`index.js`) |
 | `api/` | Legacy SWA functions (deprecated, not deployed) |
@@ -193,6 +193,24 @@ try {
 - **Requisitions**: Id, Title, Department, Description, HiringManagerName, Status (default 'Open'), CreatedAt, UpdatedAt
 - **Comments**: Id, CandidateId (FK CASCADE), RequisitionId (FK), AuthorName, Role, CommentText, Rating, CreatedAt
 - **StageHistory**: Id, CandidateId (FK), FromStage, ToStage, ChangedBy, Role, Notes, CreatedAt
+
+## Pages & Routes
+
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/apply` (default) | ApplyPage | Public — candidates browse open requisitions, view JD details, and submit applications |
+| `/hr-admin` | HRAdminPage | HR Admin dashboard — manage requisitions, add candidates, screening, HR selection, offer release |
+| `/hiring-manager` | HiringManagerPage | Hiring Manager dashboard — review candidates by requisition, technical interview/selection |
+| `/director` | DirectorPage | Director dashboard — review and final selection/rejection |
+
+### Apply Page Flow
+
+1. **Job Listings** — card grid of all Open requisitions (department, hiring manager, hiring type, description)
+2. **Job Detail** — click a card to see full description, requisition number, JD download link
+3. **Application Form** — click "Apply Now" → form (First Name, Last Name, Email, Phone, Notes) → submits via `POST /api/create-candidate` with `requisitionId` and `position` set from the requisition → candidate created at Stage 1 (Applied)
+4. Navigation: Job Listings ↔ Job Detail ↔ Application Form (back buttons at each step)
+
+---
 
 ## Recruitment Pipeline Stages
 
