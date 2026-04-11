@@ -256,8 +256,7 @@ export default {
     }
   },
   async mounted() {
-    await this.fetchCandidates()
-    await this.fetchStages()
+    await Promise.all([this.fetchCandidates(), this.fetchStages()])
   },
   methods: {
     async fetchStages() {
@@ -282,6 +281,16 @@ export default {
         this.error = err.message
       } finally {
         this.loading = false
+      }
+    },
+    async silentFetchCandidates() {
+      try {
+        const res = await fetch(this.apiBase + "/api/get-candidates")
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        this.candidates = data.candidates || []
+      } catch (err) {
+        console.error("Silent fetch candidates error:", err)
       }
     },
     getNextStages(currentStage) {
@@ -325,7 +334,7 @@ export default {
         candidate.StageName = data.toStageName
         candidate.Status = data.toStage
         candidate.nextStage = ''
-        await this.fetchCandidates()
+        await this.silentFetchCandidates()
       } catch (err) {
         this.error = err.message
         candidate.nextStage = ''

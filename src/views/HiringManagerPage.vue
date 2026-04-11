@@ -233,8 +233,7 @@ export default {
     }
   },
   async mounted() {
-    await this.fetchRequisitions()
-    await this.fetchStages()
+    await Promise.all([this.fetchRequisitions(), this.fetchStages()])
   },
   methods: {
     async refresh() {
@@ -285,6 +284,17 @@ export default {
         this.loading = false
       }
     },
+    async silentFetchCandidatesForRequisition() {
+      if (!this.selectedRequisitionId) return
+      try {
+        const res = await fetch(this.apiBase + "/api/candidates-by-requisition?requisitionId=" + this.selectedRequisitionId)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json()
+        this.candidates = data.candidates || []
+      } catch (err) {
+        console.error("Silent fetch candidates error:", err)
+      }
+    },
     getNextStages(currentStage) {
       const stageNum = typeof currentStage === 'string' ? this.getStageNumFromName(currentStage) : (currentStage || 1)
       const currentStageName = this.stages.find(s => s.stage === stageNum)?.name || 'Applied'
@@ -326,7 +336,7 @@ export default {
         candidate.StageName = data.toStageName
         candidate.Status = data.toStage
         candidate.nextStage = ''
-        await this.fetchCandidatesForRequisition()
+        await this.silentFetchCandidatesForRequisition()
       } catch (err) {
         this.error = err.message
         candidate.nextStage = ''
