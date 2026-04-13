@@ -19,11 +19,31 @@ const STAGES = {
   15: 'Offer Revoked'
 }
 
+function getUserRoles(request) {
+  const header = request.headers.get('x-ms-client-principal')
+  if (!header) return []
+  try {
+    const decoded = Buffer.from(header, 'base64').toString('utf-8')
+    const principal = JSON.parse(decoded)
+    return principal.userRoles || []
+  } catch {
+    return []
+  }
+}
+
 app.http('create-candidate', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
+      const userRoles = getUserRoles(request)
+      const isAuthenticated = userRoles.length > 0
+      const isAuthorized = userRoles.some(r => ['hr-admin', 'hiring-manager'].includes(r))
+
+      if (isAuthenticated && !isAuthorized) {
+        return { status: 403, body: JSON.stringify({ error: 'Only HR Admin or Hiring Manager can add candidates' }) }
+      }
+
       const body = await request.json()
       const { firstName, lastName, email, phone, position, notes, requisitionId } = body
 

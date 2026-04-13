@@ -19,6 +19,12 @@ const STAGES = {
   15: 'Offer Revoked'
 }
 
+const ROLE_MAP = {
+  'hr-admin': 'HRAdmin',
+  'hiring-manager': 'HiringManager',
+  'director': 'Director'
+}
+
 const PERMISSIONS = {
   'Applied': { roles: ['HRAdmin'], nextStages: [2] },
   'Screening': { roles: ['HRAdmin'], nextStages: [3, 8, 9] },
@@ -37,16 +43,52 @@ const PERMISSIONS = {
   'Offer Revoked': { roles: ['HRAdmin'], nextStages: [] }
 }
 
+function getUserRoles(request) {
+  const header = request.headers.get('x-ms-client-principal')
+  if (!header) return []
+  try {
+    const decoded = Buffer.from(header, 'base64').toString('utf-8')
+    const principal = JSON.parse(decoded)
+    return principal.userRoles || []
+  } catch {
+    return []
+  }
+}
+
+function normalizeRole(role) {
+  return ROLE_MAP[role] || role
+}
+
+function hasPermission(userRoles, requiredRole) {
+  const normalizedRequired = normalizeRole(requiredRole)
+  return userRoles.some(r => normalizeRole(r) === normalizedRequired)
+}
+
 app.http('stage-transition', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
-      const body = await request.json()
-      const { candidateId, toStage, role, changedBy, notes } = body
+      const userRoles = getUserRoles(request)
+      context.log('User roles from auth:', userRoles)
 
-      if (!candidateId || !toStage || !role) {
-        return { status: 400, body: JSON.stringify({ error: 'candidateId, toStage, and role are required' }) }
+      if (userRoles.length === 0) {
+        return { status: 401, body: JSON.stringify({ error: 'Authentication required. Please login.' }) }
+      }
+
+      const body = await request.json()
+      const { candidateId, toStage, changedBy, notes } = body
+
+      const userRole = userRoles.find(r => ['hr-admin', 'hiring-manager', 'director'].includes(r))
+      if (!userRole) {
+        return { status: 403, body: JSON.stringify({ error: 'User does not have a valid role (hr-admin, hiring-manager, or director)' }) }
+      }
+
+      const role = ROLE_MAP[userRole]
+      context.log(`User authenticated as: ${role}`)
+
+      if (!candidateId || !toStage) {
+        return { status: 400, body: JSON.stringify({ error: 'candidateId and toStage are required' }) }
       }
 
       const validStages = Object.values(STAGES)

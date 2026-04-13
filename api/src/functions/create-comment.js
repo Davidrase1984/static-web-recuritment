@@ -1,21 +1,50 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
 
+const ROLE_MAP = {
+  'hr-admin': 'HRAdmin',
+  'hiring-manager': 'HiringManager',
+  'director': 'Director'
+}
+
+function getUserRoles(request) {
+  const header = request.headers.get('x-ms-client-principal')
+  if (!header) return []
+  try {
+    const decoded = Buffer.from(header, 'base64').toString('utf-8')
+    const principal = JSON.parse(decoded)
+    return principal.userRoles || []
+  } catch {
+    return []
+  }
+}
+
 app.http('create-comment', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
-      const body = await request.json()
-      const { candidateId, requisitionId, authorName, role, commentText, rating } = body
+      const userRoles = getUserRoles(request)
+      context.log('User roles:', userRoles)
 
-      if (!candidateId || !role || !commentText) {
-        return { status: 400, body: JSON.stringify({ error: 'candidateId, role, and commentText are required' }) }
+      if (userRoles.length === 0) {
+        return { status: 401, body: JSON.stringify({ error: 'Authentication required. Please login.' }) }
       }
 
-      const validRoles = ['HiringManager', 'HRAdmin', 'Director']
-      if (!validRoles.includes(role)) {
-        return { status: 400, body: JSON.stringify({ error: `role must be one of: ${validRoles.join(', ')}` }) }
+      const validRoles = ['hr-admin', 'hiring-manager', 'director']
+      const userRole = userRoles.find(r => validRoles.includes(r))
+      if (!userRole) {
+        return { status: 403, body: JSON.stringify({ error: 'User does not have a valid role to add comments' }) }
+      }
+
+      const role = ROLE_MAP[userRole]
+      context.log(`Creating comment as: ${role}`)
+
+      const body = await request.json()
+      const { candidateId, requisitionId, authorName, commentText, rating } = body
+
+      if (!candidateId || !commentText) {
+        return { status: 400, body: JSON.stringify({ error: 'candidateId and commentText are required' }) }
       }
 
       const pool = await getConnection()

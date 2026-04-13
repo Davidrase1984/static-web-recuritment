@@ -5,7 +5,19 @@
       "allowedRoles": ["anonymous", "authenticated"]
     },
     {
-      "route": "/*",
+      "route": "/hr-admin",
+      "allowedRoles": ["hr-admin"]
+    },
+    {
+      "route": "/hiring-manager",
+      "allowedRoles": ["hiring-manager"]
+    },
+    {
+      "route": "/director",
+      "allowedRoles": ["director"]
+    },
+    {
+      "route": "/",
       "allowedRoles": ["authenticated"]
     }
   ],

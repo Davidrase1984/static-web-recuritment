@@ -1,10 +1,14 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
+const { requireAnyRole } = require('../auth.js')
 
 app.http('comments', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
+    const auth = requireAnyRole(request, ['hr-admin', 'hiring-manager', 'director'])
+    if (!auth.authorized) return auth.forbiddenResponse
+
     try {
       const candidateId = request.query.get('candidateId')
       if (!candidateId) {

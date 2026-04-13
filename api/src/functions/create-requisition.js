@@ -1,11 +1,30 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
 
+function getUserRoles(request) {
+  const header = request.headers.get('x-ms-client-principal')
+  if (!header) return []
+  try {
+    const decoded = Buffer.from(header, 'base64').toString('utf-8')
+    const principal = JSON.parse(decoded)
+    return principal.userRoles || []
+  } catch {
+    return []
+  }
+}
+
 app.http('create-requisition', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
     try {
+      const userRoles = getUserRoles(request)
+      context.log('User roles:', userRoles)
+
+      if (!userRoles.includes('hr-admin')) {
+        return { status: 403, body: JSON.stringify({ error: 'Only HR Admin can create requisitions' }) }
+      }
+
       const body = await request.json()
       const { 
         title, department, description,

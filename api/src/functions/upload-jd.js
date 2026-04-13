@@ -1,10 +1,14 @@
 const { app } = require('@azure/functions')
 const { BlobServiceClient } = require('@azure/storage-blob')
+const { requireRole } = require('../auth.js')
 
 app.http('upload-jd', {
   methods: ['POST'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
+    const auth = requireRole(request, 'hr-admin')
+    if (!auth.authorized) return auth.forbiddenResponse
+
     try {
       const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING
       const containerName = process.env.AZURE_STORAGE_CONTAINER_NAME || 'jobdescriptions'

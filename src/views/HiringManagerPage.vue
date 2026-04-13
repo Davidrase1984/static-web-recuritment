@@ -320,7 +320,6 @@ export default {
           body: JSON.stringify({
             candidateId: candidate.Id,
             toStage: parseInt(candidate.nextStage),
-            role: this.currentRole,
             changedBy: this.currentUser,
             notes: `Moved to ${candidate.nextStage}`
           })

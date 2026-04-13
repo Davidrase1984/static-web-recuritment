@@ -377,9 +377,35 @@ api/src/
 
 ## Authentication
 
-- Azure AD authentication was **removed** (previously configured in `staticwebapp.config.json`)
-- All routes are now public (no `allowedRoles` required)
-- To re-enable: add `routes` and `responseOverrides` blocks per Azure SWA docs
+- **Microsoft Entra ID (AAD)** authentication is enabled via Azure SWA built-in auth
+- `staticwebapp.config.json` configures route-level access control and login redirects
+- **Public route**: `/apply` — accessible by `anonymous` and `authenticated` users
+- **Protected routes**: `/*` (all others) — require `authenticated` role
+- Unauthenticated users accessing protected routes are redirected to `/.auth/login/aad` (Microsoft Entra ID login)
+- After login, users are redirected back to the original page (`post_login_redirect_uri`)
+
+### Auth Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `/.auth/login/aad` | Login with Microsoft Entra ID |
+| `/.auth/logout` | Logout and clear session |
+| `/.auth/me` | Get current user info (returns `clientPrincipal` with `userDetails`, `roles`, etc.) |
+
+### NavBar Auth UI
+
+- **"Login with Microsoft"** button shown when not authenticated (blue, redirects to `/.auth/login/aad`)
+- **"Logout"** button shown when authenticated (red, redirects to `/.auth/logout`)
+- **Username display** shown when authenticated (from `clientPrincipal.userDetails`)
+- Protected nav links (HR Admin, Hiring Manager, Director) hidden when not authenticated
+- Auth status checked via `fetch("/.auth/me")` in `NavBar.vue` `mounted()` hook
+
+### Azure Portal Setup
+
+1. Go to Static Web App → Settings → Authentication
+2. Add **Microsoft Entra ID** as identity provider
+3. Configure app registration with correct redirect URIs
+4. Assign `authenticated` role to users in Settings → Role management
 
 ---
 

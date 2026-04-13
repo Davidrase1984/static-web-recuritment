@@ -1,5 +1,6 @@
 const { app } = require('@azure/functions')
 const { getConnection, sql } = require('../db.js')
+const { requireAnyRole } = require('../auth.js')
 
 const STAGES = {
   1: 'Applied',
@@ -23,6 +24,9 @@ app.http('get-candidates', {
   methods: ['GET'],
   authLevel: 'anonymous',
   handler: async (request, context) => {
+    const auth = requireAnyRole(request, ['hr-admin', 'hiring-manager', 'director'])
+    if (!auth.authorized) return auth.forbiddenResponse
+
     try {
       const pool = await getConnection()
 

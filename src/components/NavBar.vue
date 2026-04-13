@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16">
         <div class="flex items-center">
-          <router-link to="/hr-admin" class="text-xl font-bold text-slate-900">
+          <router-link to="/apply" class="text-xl font-bold text-slate-900">
             Recruitment Dashboard
           </router-link>
         </div>
@@ -13,17 +13,17 @@
             :class="$route.path === '/apply' ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-100'">
             Apply
           </router-link>
-          <router-link v-if="isAuthenticated" to="/hr-admin"
+          <router-link v-if="hasRole('hr-admin')" to="/hr-admin"
             class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
             :class="$route.path === '/hr-admin' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'">
             HR Admin
           </router-link>
-          <router-link v-if="isAuthenticated" to="/hiring-manager"
+          <router-link v-if="hasRole('hiring-manager')" to="/hiring-manager"
             class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
             :class="$route.path === '/hiring-manager' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'">
             Hiring Manager
           </router-link>
-          <router-link v-if="isAuthenticated" to="/director"
+          <router-link v-if="hasRole('director')" to="/director"
             class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
             :class="$route.path === '/director' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100'">
             Director
@@ -32,7 +32,11 @@
           <!-- Auth Buttons -->
           <div class="ml-4 pl-4 border-l border-slate-200">
             <template v-if="isAuthenticated">
-              <span class="text-sm text-slate-500 mr-3">{{ userName }}</span>
+              <span class="text-sm text-slate-500 mr-2">{{ userName }}</span>
+              <span v-for="role in displayRoles" :key="role"
+                class="inline-block px-2 py-0.5 mr-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                {{ role }}
+              </span>
               <a :href="logoutUrl"
                 class="px-4 py-2 rounded-lg text-sm font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors duration-200 cursor-pointer">
                 Logout
@@ -52,35 +56,34 @@
 </template>
 
 <script>
+import { fetchUser, isAuthenticated as checkAuth, getUserName, getUserRoles, hasRole as checkRole } from '../utils/auth.js'
+
 export default {
   name: "NavBar",
   data() {
     return {
-      user: null,
+      isAuthenticated: false,
+      userName: "",
+      roles: [],
       loginUrl: "/.auth/login/aad?post_login_redirect_uri=" + encodeURIComponent(window.location.pathname),
       logoutUrl: "/.auth/logout?post_logout_redirect_uri=/"
     }
   },
   computed: {
-    isAuthenticated() {
-      return this.user && this.user.clientPrincipal !== null
-    },
-    userName() {
-      if (this.user && this.user.clientPrincipal) {
-        return this.user.clientPrincipal.userDetails
-      }
-      return ""
+    displayRoles() {
+      return this.roles.filter(r => r !== "authenticated" && r !== "anonymous")
+    }
+  },
+  methods: {
+    hasRole(role) {
+      return this.roles.includes(role)
     }
   },
   async mounted() {
-    try {
-      const response = await fetch("/.auth/me")
-      if (response.ok) {
-        this.user = await response.json()
-      }
-    } catch (e) {
-      this.user = null
-    }
+    await fetchUser()
+    this.isAuthenticated = checkAuth()
+    this.userName = getUserName()
+    this.roles = getUserRoles()
   }
 }
 </script>
